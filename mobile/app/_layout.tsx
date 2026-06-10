@@ -24,7 +24,7 @@ if (!PUBLISHABLE_KEY && __DEV__) {
  * Clerk Expo docs recommend.
  */
 function AuthRouter() {
-  const { isLoaded, isSignedIn } = useAuth();
+  const { isLoaded, isSignedIn, getToken } = useAuth();
   const router = useRouter();
   const segments = useSegments();
   const { t } = useTheme();
@@ -38,6 +38,52 @@ function AuthRouter() {
       router.replace("/(tabs)");
     }
   }, [isLoaded, isSignedIn, segments, router]);
+
+  // Dev-only sanity check: when the user is signed in, hit /api/whoami once
+  // and log what the server sees. This makes Bearer-auth bugs visible
+  // without needing a debugger — they just appear in the Metro terminal.
+  useEffect(() => {
+    if (!__DEV__ || !isLoaded || !isSignedIn) return;
+    const base = process.env.EXPO_PUBLIC_API_BASE_URL;
+    if (!base) return;
+    (async () => {
+      try {
+        const token = await getToken();
+        const res = await fetch(`${base}/api/whoami`, {
+          headers: { Authorization: `Bearer ${token ?? ""}` },
+        });
+        const data = await res.json();
+        console.log("[whoami]", res.status, JSON.stringify(data, null, 2));
+        if (token) {
+          // Log just the JWT header so we can verify the issuer matches
+          // the server's Clerk instance.
+          const [headerB64, payloadB64] = token.split(".");
+          const decode = (b64: string) => {
+            try {
+              const padded = b64 + "===".slice((b64.length + 3) % 4);
+              const normalized = padded.replace(/-/g, "+").replace(/_/g, "/");
+              return JSON.parse(globalThis.atob(normalized));
+            } catch {
+              return null;
+            }
+          };
+          console.log("[token.header]", decode(headerB64));
+          const payload = decode(payloadB64);
+          if (payload) {
+            console.log("[token.payload]", {
+              iss: payload.iss,
+              aud: payload.aud,
+              sub: payload.sub,
+              exp: payload.exp,
+              azp: payload.azp,
+            });
+          }
+        }
+      } catch (e) {
+        console.warn("[whoami] failed:", e);
+      }
+    })();
+  }, [isLoaded, isSignedIn, getToken]);
 
   if (!isLoaded) {
     return (

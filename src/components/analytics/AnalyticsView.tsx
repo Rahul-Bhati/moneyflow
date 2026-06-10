@@ -45,8 +45,8 @@ export default function AnalyticsView({
   const label = useMemo(() => periodLabel(period), [period]);
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-4 pb-24">
-      <header className="glass sticky top-0 z-30 -mx-4 mb-1 flex items-center justify-between border-b border-border px-4 py-3.5">
+    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-4 pb-24 md:max-w-5xl md:px-8 lg:max-w-6xl">
+      <header className="glass sticky top-0 z-30 -mx-4 mb-1 flex items-center justify-between border-b border-border px-4 py-3.5 md:-mx-8 md:px-8">
         <div className="flex items-center gap-2">
           <Link
             href="/"
@@ -85,10 +85,17 @@ export default function AnalyticsView({
               />
             </div>
 
-            <CategoryPie transactions={filtered} />
-            <TrendArea transactions={initialTransactions} />
-            <HeatmapCalendar transactions={initialTransactions} />
-            <TopExpenses transactions={filtered} />
+            {/* Charts go single-column on mobile, two-up on md+, three-up on lg+.
+                TopExpenses is intentionally last so it visually anchors the bottom-right
+                on wide layouts. */}
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <CategoryPie transactions={filtered} />
+              <TrendArea transactions={initialTransactions} />
+              <HeatmapCalendar transactions={initialTransactions} />
+              <div className="md:col-span-2 lg:col-span-3">
+                <TopExpenses transactions={filtered} />
+              </div>
+            </div>
           </>
         ) : (
           <div className="flex flex-col gap-3">

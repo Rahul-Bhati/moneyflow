@@ -1,6 +1,8 @@
 import "server-only";
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import type { ServiceResult } from "@/lib/services/result";
+import { enforceRateLimit } from "./rate-limit";
+import { logApiError } from "./logging";
 
 /**
  * Adapt a service Result into an HTTP response. Keeps every route handler a
@@ -22,7 +24,10 @@ export function respond<T>(
 /**
  * Wrap a route body so any thrown error becomes a clean 500 JSON response
  * rather than the framework's HTML error page (which a mobile client can't
- * parse). Use it like: `export const GET = withErrors(async (req) => ...)`.
+ * parse). In production, stack traces are stripped — clients only see a
+ * generic message, while the full error stays in the server logs.
+ *
+ * Use it like: `export const GET = withErrors(async (req) => ...)`.
  */
 export function withErrors<Args extends unknown[]>(
   fn: (...args: Args) => Promise<NextResponse>
@@ -31,9 +36,33 @@ export function withErrors<Args extends unknown[]>(
     try {
       return await fn(...args);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Internal error";
-      console.error("[api] unhandled:", err);
+      logApiError(err);
+      // Never leak stack traces or internals to the client in prod.
+      const message =
+        process.env.NODE_ENV === "production"
+          ? "Internal server error"
+          : err instanceof Error
+          ? err.message
+          : "Internal error";
       return NextResponse.json({ error: message }, { status: 500 });
     }
   };
+}
+
+/**
+ * Production-ready route wrapper. Composition is:
+ *   1) Rate limit per user/IP — returns 429 early.
+ *   2) Run the handler, with error envelope.
+ *
+ * Every API route should use this instead of `withErrors` directly.
+ */
+export function withApi<Args extends [NextRequest, ...unknown[]]>(
+  fn: (...args: Args) => Promise<NextResponse>
+): (...args: Args) => Promise<NextResponse> {
+  return withErrors(async (...args: Args) => {
+    const [req] = args;
+    const limited = await enforceRateLimit(req);
+    if (limited) return limited;
+    return fn(...args);
+  });
 }

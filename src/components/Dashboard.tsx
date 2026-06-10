@@ -48,8 +48,8 @@ export default function Dashboard({
   }
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-4 pb-36">
-      <header className="glass sticky top-0 z-30 -mx-4 mb-1 flex items-center justify-between border-b border-border px-4 py-3.5">
+    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-4 pb-36 md:max-w-5xl md:px-8 lg:max-w-6xl">
+      <header className="glass sticky top-0 z-30 -mx-4 mb-1 flex items-center justify-between border-b border-border px-4 py-3.5 md:-mx-8 md:px-8">
         <div>
           <h1 className="font-display text-lg font-extrabold tracking-tight">MoneyFlow</h1>
           <p className="text-xs font-medium text-muted" suppressHydrationWarning>
@@ -92,20 +92,25 @@ export default function Dashboard({
         </motion.div>
 
         {mounted ? (
-          <>
-            <SummaryCards totals={periodTotals} period={period} transactions={transactions} />
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {/* On mobile every card stacks; on md the chart sits beside the
+                summary; on lg the history grows a third column. */}
+            <div className="md:col-span-1 lg:col-span-1">
+              <SummaryCards totals={periodTotals} period={period} transactions={transactions} />
+            </div>
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.45, delay: 0.05 }}
+              className="md:col-span-1 lg:col-span-1"
             >
               <SpendChart buckets={buckets} period={period} />
             </motion.div>
-            <div className="mt-1">
+            <div className="md:col-span-2 lg:col-span-1">
               <h2 className="mb-2 px-1 font-display text-base font-bold">History</h2>
               <TransactionList transactions={filtered} onDelete={handleDelete} />
             </div>
-          </>
+          </div>
         ) : (
           <Skeleton />
         )}

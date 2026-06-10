@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { revalidatePath } from "next/cache";
 import { deleteBillById, updateBill } from "@/lib/services/bills";
-import { respond, withErrors } from "@/lib/api/respond";
+import { respond, withApi } from "@/lib/api/respond";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,7 +14,7 @@ function invalidate() {
   revalidatePath("/analytics");
 }
 
-export const PATCH = withErrors(
+export const PATCH = withApi(
   async (req: NextRequest, ctx: RouteContext) => {
     const { id } = await ctx.params;
     let body: unknown;
@@ -32,7 +32,7 @@ export const PATCH = withErrors(
   }
 );
 
-export const DELETE = withErrors(
+export const DELETE = withApi(
   async (_req: NextRequest, ctx: RouteContext) => {
     const { id } = await ctx.params;
     const result = await deleteBillById(id);

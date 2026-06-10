@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import { addBill } from "@/app/actions/bills";
 import { currencySymbol } from "@/lib/format";
 import { RECURRENCES, type Bill, type Recurrence } from "@/lib/types";
+import { Chip } from "@/components/ui/Chip";
 
 export default function AddBillSheet({
   onAdded,
@@ -172,23 +173,15 @@ export default function AddBillSheet({
                   Recurrence
                 </div>
                 <div className="flex flex-wrap gap-1.5">
-                  {RECURRENCES.map((r) => {
-                    const active = recurrence === r.key;
-                    return (
-                      <button
-                        key={r.key}
-                        type="button"
-                        onClick={() => setRecurrence(r.key)}
-                        className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-                          active
-                            ? "border-transparent bg-accent text-accent-ink"
-                            : "border-border bg-surface text-muted hover:text-ink"
-                        }`}
-                      >
-                        {r.label}
-                      </button>
-                    );
-                  })}
+                  {RECURRENCES.map((r) => (
+                    <Chip
+                      key={r.key}
+                      active={recurrence === r.key}
+                      onClick={() => setRecurrence(r.key)}
+                    >
+                      {r.label}
+                    </Chip>
+                  ))}
                 </div>
               </div>
 

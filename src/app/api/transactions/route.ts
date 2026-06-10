@@ -5,12 +5,12 @@ import {
   listTransactions,
 } from "@/lib/services/transactions";
 import { firstError, txListQuerySchema } from "@/lib/validation";
-import { respond, withErrors } from "@/lib/api/respond";
+import { respond, withApi } from "@/lib/api/respond";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export const GET = withErrors(async (req: NextRequest) => {
+export const GET = withApi(async (req: NextRequest) => {
   const q = Object.fromEntries(req.nextUrl.searchParams);
   const parsed = txListQuerySchema.safeParse(q);
   if (!parsed.success) {
@@ -22,7 +22,7 @@ export const GET = withErrors(async (req: NextRequest) => {
   return respond(await listTransactions(parsed.data));
 });
 
-export const POST = withErrors(async (req: NextRequest) => {
+export const POST = withApi(async (req: NextRequest) => {
   let body: unknown;
   try {
     body = await req.json();

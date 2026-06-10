@@ -300,7 +300,7 @@ type BillsResponse = {
 
 ---
 
-## M7 — Responsive, performance, security pass
+## M7 — Responsive, performance, security pass ✅ done
 
 **Why:** Production hardening. Everything that's been built so far should now work great on a 360px phone *and* a 1440px desktop, load fast, and reject malformed input gracefully.
 

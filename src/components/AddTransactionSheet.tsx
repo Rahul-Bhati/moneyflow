@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import { addTransaction } from "@/app/actions";
 import { currencySymbol } from "@/lib/format";
 import { BUILT_IN_CATEGORIES, type Transaction, type TxType } from "@/lib/types";
+import { Chip } from "@/components/ui/Chip";
 
 export default function AddTransactionSheet({
   onAdded,
@@ -216,34 +217,21 @@ export default function AddTransactionSheet({
                   Category
                 </div>
                 <div className="flex flex-wrap gap-1.5">
-                  {BUILT_IN_CATEGORIES.map((c) => {
-                    const active = category === c;
-                    return (
-                      <button
-                        key={c}
-                        type="button"
-                        onClick={() => setCategory(c)}
-                        className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-                          active
-                            ? "border-transparent bg-accent text-accent-ink"
-                            : "border-border bg-surface text-muted hover:text-ink"
-                        }`}
-                      >
-                        {c}
-                      </button>
-                    );
-                  })}
-                  <button
-                    type="button"
+                  {BUILT_IN_CATEGORIES.map((c) => (
+                    <Chip
+                      key={c}
+                      active={category === c}
+                      onClick={() => setCategory(c)}
+                    >
+                      {c}
+                    </Chip>
+                  ))}
+                  <Chip
+                    active={category === "__custom__"}
                     onClick={() => setCategory("__custom__")}
-                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-                      category === "__custom__"
-                        ? "border-transparent bg-accent text-accent-ink"
-                        : "border-border bg-surface text-muted hover:text-ink"
-                    }`}
                   >
                     Custom…
-                  </button>
+                  </Chip>
                 </div>
                 <AnimatePresence>
                   {category === "__custom__" && (
