@@ -5,10 +5,14 @@ const isPublicRoute = createRouteMatcher([
   "/sign-up(.*)",
 ]);
 
+// API routes do their own auth in the handler — we want JSON 401 responses,
+// not a redirect to /sign-in. So we don't call auth.protect() for them; the
+// Clerk auth() helper still works inside the route to read the session.
+const isApiRoute = createRouteMatcher(["/api/(.*)"]);
+
 export const proxy = clerkMiddleware(async (auth, req) => {
-  if (!isPublicRoute(req)) {
-    await auth.protect();
-  }
+  if (isPublicRoute(req) || isApiRoute(req)) return;
+  await auth.protect();
 });
 
 export const config = {

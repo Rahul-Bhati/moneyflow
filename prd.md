@@ -202,7 +202,7 @@ A milestone is "done" when:
 
 ---
 
-## M5 — REST API routes (for mobile + future 3rd-party)
+## M5 — REST API routes (for mobile + future 3rd-party) ✅ done
 
 **Why:** The mobile app needs an HTTP interface. Server Actions don't work cross-platform.
 

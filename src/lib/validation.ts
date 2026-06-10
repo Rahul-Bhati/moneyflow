@@ -24,6 +24,25 @@ export const transactionInputSchema = z.object({
 
 export type TransactionInput = z.infer<typeof transactionInputSchema>;
 
+// PATCH /api/transactions/[id] — every field optional, at least one required.
+export const transactionUpdateSchema = transactionInputSchema.partial().refine(
+  (obj) => Object.keys(obj).length > 0,
+  { message: "Send at least one field to update" }
+);
+export type TransactionUpdate = z.infer<typeof transactionUpdateSchema>;
+
+export const periodSchema = z.enum(["day", "week", "month", "year"]);
+
+// Query-string parser for list / analytics endpoints.
+export const txListQuerySchema = z.object({
+  period: periodSchema.optional(),
+  category: z.string().trim().min(1).max(40).optional(),
+});
+
+export const analyticsQuerySchema = z.object({
+  period: periodSchema.optional().default("month"),
+});
+
 export const idSchema = z.string().uuid("Invalid id");
 
 export function firstError(err: z.ZodError): string {
@@ -58,3 +77,24 @@ export const billInputSchema = z.object({
 });
 
 export type BillInput = z.infer<typeof billInputSchema>;
+
+// PATCH /api/bills/[id] — partial bill update. Status may be sent on its own
+// (drag-to-column flow) or alongside the editable fields.
+export const billUpdateSchema = z
+  .object({
+    name: z.string().trim().min(1).max(60).optional(),
+    amount: z
+      .number()
+      .finite()
+      .gt(0, "Amount must be > 0")
+      .max(1_000_000_000)
+      .optional(),
+    due_on: isoDateSchema.optional(),
+    recurrence: recurrenceSchema.optional(),
+    status: billStatusSchema.optional(),
+  })
+  .refine((o) => Object.keys(o).length > 0, {
+    message: "Send at least one field to update",
+  });
+
+export type BillUpdate = z.infer<typeof billUpdateSchema>;

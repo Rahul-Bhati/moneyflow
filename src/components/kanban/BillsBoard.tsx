@@ -17,29 +17,12 @@ import { UserButton } from "@clerk/nextjs";
 import { ArrowLeft } from "lucide-react";
 import { deleteBill, updateBillStatus } from "@/app/actions/bills";
 import { BILL_COLUMNS, type Bill, type BillStatus } from "@/lib/types";
-import { daysUntil, todayISO } from "@/lib/recurrence";
+import { computeEffectiveStatus, daysUntil, todayISO } from "@/lib/recurrence";
 import { money } from "@/lib/format";
 import ThemeToggle from "../ThemeToggle";
 import Column from "./Column";
 import BillCard from "./BillCard";
 import AddBillSheet from "./AddBillSheet";
-
-/**
- * Read-side status computation. A bill explicitly marked "paid" stays paid.
- * Everything else recategorizes from `due_on` vs today — which lets cards age
- * across midnight without writes. Manual drags between non-paid columns DO
- * persist (sticky), but the next render will recompute if the row hasn't been
- * touched since.
- *
- * Today, "due this week" = any non-paid bill with 0 ≤ daysUntil ≤ 7.
- */
-function computeEffectiveStatus(bill: Bill, today: string): BillStatus {
-  if (bill.status === "paid") return "paid";
-  const d = daysUntil(bill.due_on, today);
-  if (d < 0) return "overdue";
-  if (d <= 7) return "due_week";
-  return "upcoming";
-}
 
 export default function BillsBoard({ initialBills }: { initialBills: Bill[] }) {
   const [bills, setBills] = useState<Bill[]>(initialBills);

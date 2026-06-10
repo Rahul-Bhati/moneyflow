@@ -1,4 +1,4 @@
-import type { Recurrence } from "./types";
+import type { Bill, BillStatus, Recurrence } from "./types";
 
 /**
  * Compute the next due-date for a recurring bill. Pure date math — no clock
@@ -84,4 +84,22 @@ export function daysUntil(due: string, today: string): number {
   const dueUtc = Date.UTC(dy, dm - 1, dd);
   const todayUtc = Date.UTC(ty, tm - 1, td);
   return Math.round((dueUtc - todayUtc) / 86_400_000);
+}
+
+/**
+ * Read-side status computation, shared between the Kanban UI and the API.
+ *
+ *   - A bill explicitly marked "paid" stays paid.
+ *   - Anything else recategorizes from `due_on` vs today, so cards age across
+ *     midnight without database writes.
+ *
+ * Manual drags between non-paid columns persist (sticky), but the next render
+ * still recomputes if no human has touched the row since.
+ */
+export function computeEffectiveStatus(bill: Bill, today: string): BillStatus {
+  if (bill.status === "paid") return "paid";
+  const d = daysUntil(bill.due_on, today);
+  if (d < 0) return "overdue";
+  if (d <= 7) return "due_week";
+  return "upcoming";
 }
