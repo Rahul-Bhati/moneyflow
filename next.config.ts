@@ -76,6 +76,12 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.join(__dirname),
   },
+  experimental: {
+    // recharts is a barrel package — importing { AreaChart } pulls the whole
+    // index without this. lucide-react is on Next's built-in optimize list
+    // already; recharts isn't.
+    optimizePackageImports: ["recharts"],
+  },
   async headers() {
     return [
       {
