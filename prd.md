@@ -159,7 +159,7 @@ A milestone is "done" when:
 
 ---
 
-## M4 — Kanban: Bills & Subscriptions board
+## M4 — Kanban: Bills & Subscriptions board ✅ done
 
 **Why:** Recurring bills are where people leak money. Visualizing them as a workflow they can drag turns "I might owe something" into "here's the column".
 

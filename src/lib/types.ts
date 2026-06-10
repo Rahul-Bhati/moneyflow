@@ -42,3 +42,40 @@ export const UNCATEGORIZED = "Uncategorized";
  */
 export const CURRENCY = "INR";
 export const LOCALE = "en-IN";
+
+// ---------------------------------------------------------------------------
+// Bills / Subscriptions (M4)
+// ---------------------------------------------------------------------------
+export type BillStatus = "upcoming" | "due_week" | "paid" | "overdue";
+
+export type Recurrence = "none" | "weekly" | "monthly" | "yearly";
+
+export interface Bill {
+  id: string;
+  name: string;
+  amount: number; // always positive
+  due_on: string; // "YYYY-MM-DD"
+  status: BillStatus; // sticky override (write-side)
+  recurrence: Recurrence;
+  paid_on: string | null;
+  created_at: string;
+}
+
+export const BILL_COLUMNS: {
+  key: BillStatus;
+  label: string;
+  hint: string;
+  tone: "neutral" | "warn" | "good" | "bad";
+}[] = [
+  { key: "upcoming", label: "Upcoming", hint: "More than a week away", tone: "neutral" },
+  { key: "due_week", label: "Due This Week", hint: "Within 7 days", tone: "warn" },
+  { key: "paid", label: "Paid", hint: "Settled", tone: "good" },
+  { key: "overdue", label: "Overdue", hint: "Past the due date", tone: "bad" },
+];
+
+export const RECURRENCES: { key: Recurrence; label: string }[] = [
+  { key: "none", label: "One-time" },
+  { key: "weekly", label: "Weekly" },
+  { key: "monthly", label: "Monthly" },
+  { key: "yearly", label: "Yearly" },
+];

@@ -9,14 +9,24 @@ export default function SetupNotice() {
         </span>
         <h1 className="mt-5 font-display text-2xl font-extrabold">Almost there</h1>
         <p className="mt-2 text-sm leading-relaxed text-muted">
-          MoneyFlow needs a Supabase database. Add these to a{" "}
+          MoneyFlow needs Supabase + Clerk credentials. Add these to a{" "}
           <code className="rounded bg-surface-2 px-1.5 py-0.5 text-ink">.env.local</code> file
-          (or your Vercel project settings), then restart:
+          (or your Vercel project settings), then restart the dev server:
         </p>
         <pre className="tnum mt-4 overflow-x-auto rounded-xl bg-surface-2 p-4 text-[0.8rem] leading-relaxed text-ink-soft">
-{`SUPABASE_URL=https://xxxx.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=eyJ...`}
+{`# Supabase (used with the Clerk JWT — RLS scopes data per user)
+SUPABASE_URL=https://xxxx.supabase.co
+SUPABASE_ANON_KEY=eyJ...
+
+# Clerk
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_...
+CLERK_SECRET_KEY=sk_...`}
         </pre>
+        <p className="mt-3 text-xs leading-relaxed text-muted">
+          The <code className="rounded bg-surface-2 px-1 py-0.5 text-ink">SUPABASE_ANON_KEY</code>{" "}
+          replaces the old service-role key — the app now talks to Supabase as the signed-in user
+          via a Clerk-issued JWT, which RLS evaluates per-row.
+        </p>
         <a
           href="https://supabase.com/dashboard"
           target="_blank"
@@ -27,7 +37,7 @@ SUPABASE_SERVICE_ROLE_KEY=eyJ...`}
           <ArrowRight size={15} strokeWidth={2.4} />
         </a>
         <p className="mt-4 text-xs text-muted">
-          Full step-by-step setup is in the project&apos;s README.md.
+          Full setup is in the project&apos;s <code className="rounded bg-surface-2 px-1 py-0.5 text-ink">.env.example</code> and README.md.
         </p>
       </div>
     </div>

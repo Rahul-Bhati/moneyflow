@@ -29,3 +29,32 @@ export const idSchema = z.string().uuid("Invalid id");
 export function firstError(err: z.ZodError): string {
   return err.issues[0]?.message ?? "Invalid input";
 }
+
+// ---------------------------------------------------------------------------
+// Bills / Subscriptions (M4)
+// ---------------------------------------------------------------------------
+export const billStatusSchema = z.enum([
+  "upcoming",
+  "due_week",
+  "paid",
+  "overdue",
+]);
+
+export const recurrenceSchema = z.enum(["none", "weekly", "monthly", "yearly"]);
+
+export const billInputSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1, "Give the bill a name")
+    .max(60, "Name must be 60 characters or fewer"),
+  amount: z
+    .number({ message: "Amount must be a number" })
+    .finite("Amount must be a finite number")
+    .gt(0, "Enter an amount greater than zero")
+    .max(1_000_000_000, "Amount is too large"),
+  due_on: isoDateSchema,
+  recurrence: recurrenceSchema,
+});
+
+export type BillInput = z.infer<typeof billInputSchema>;
