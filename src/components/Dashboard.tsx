@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
+import { UserButton } from "@clerk/nextjs";
 import { deleteTransaction } from "@/app/actions";
-import { signOut } from "@/app/auth/actions";
 import { type Transaction, type Period } from "@/lib/types";
 import { filterByPeriod, totals, chartBuckets, periodLabel } from "@/lib/format";
 import SegmentedFilter from "./SegmentedFilter";
@@ -12,7 +12,6 @@ import SpendChart from "./SpendChart";
 import TransactionList from "./TransactionList";
 import AddTransactionSheet from "./AddTransactionSheet";
 import ThemeToggle from "./ThemeToggle";
-import { LogOut } from "lucide-react";
 
 export default function Dashboard({
   initialTransactions,
@@ -55,17 +54,15 @@ export default function Dashboard({
             {mounted ? label : "\u00A0"}
           </p>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           <ThemeToggle />
-          <form action={signOut}>
-            <button
-              type="submit"
-              title="Sign out"
-              className="flex size-9 items-center justify-center rounded-full text-muted transition hover:bg-surface-2 hover:text-ink active:scale-95"
-            >
-              <LogOut className="size-4" />
-            </button>
-          </form>
+          <UserButton
+            appearance={{
+              elements: {
+                avatarBox: "size-8",
+              },
+            }}
+          />
         </div>
       </header>
 

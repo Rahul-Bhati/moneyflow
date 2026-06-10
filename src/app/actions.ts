@@ -1,10 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getSupabase } from "@/lib/supabaseServer";
-import type { TxType } from "@/lib/types";
-
+import { getSupabaseForUser } from "@/lib/supabaseServer";
 import type { Transaction } from "@/lib/types";
+import {
+  transactionInputSchema,
+  idSchema,
+  firstError,
+  type TransactionInput,
+} from "@/lib/validation";
 
 export interface ActionResult {
   ok: boolean;
@@ -12,30 +16,23 @@ export interface ActionResult {
   transaction?: Transaction;
 }
 
-export async function addTransaction(input: {
-  amount: number;
-  type: TxType;
-  description: string;
-  occurred_on: string;
-}): Promise<ActionResult> {
-  const supabase = getSupabase();
-  if (!supabase) return { ok: false, error: "Database not configured." };
+export async function addTransaction(input: TransactionInput): Promise<ActionResult> {
+  const parsed = transactionInputSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: firstError(parsed.error) };
 
-  const amount = Number(input.amount);
-  if (!Number.isFinite(amount) || amount <= 0) {
-    return { ok: false, error: "Enter an amount greater than zero." };
-  }
-  if (input.type !== "income" && input.type !== "expense") {
-    return { ok: false, error: "Invalid type." };
-  }
+  const ctx = await getSupabaseForUser();
+  if (!ctx) return { ok: false, error: "Not signed in." };
 
-  const { data, error } = await supabase
+  const { amount, type, description, occurred_on } = parsed.data;
+
+  const { data, error } = await ctx.supabase
     .from("transactions")
     .insert({
+      user_id: ctx.userId,
       amount: Math.round(amount * 100) / 100,
-      type: input.type,
-      description: input.description.trim().slice(0, 140) || null,
-      occurred_on: input.occurred_on,
+      type,
+      description: description.trim().slice(0, 140) || null,
+      occurred_on,
     })
     .select("id, amount, type, description, occurred_on, created_at")
     .single();
@@ -53,10 +50,16 @@ export async function addTransaction(input: {
 }
 
 export async function deleteTransaction(id: string): Promise<ActionResult> {
-  const supabase = getSupabase();
-  if (!supabase) return { ok: false, error: "Database not configured." };
+  const parsed = idSchema.safeParse(id);
+  if (!parsed.success) return { ok: false, error: firstError(parsed.error) };
 
-  const { error } = await supabase.from("transactions").delete().eq("id", id);
+  const ctx = await getSupabaseForUser();
+  if (!ctx) return { ok: false, error: "Not signed in." };
+
+  const { error } = await ctx.supabase
+    .from("transactions")
+    .delete()
+    .eq("id", parsed.data);
   if (error) return { ok: false, error: error.message };
   revalidatePath("/");
   return { ok: true };

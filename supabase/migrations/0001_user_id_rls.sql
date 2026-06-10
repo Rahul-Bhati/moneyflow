@@ -1,24 +1,24 @@
--- MoneyFlow schema — run this in Supabase → SQL Editor → New query → Run.
--- For an existing DB, prefer the milestone migrations in supabase/migrations/.
+-- M2: Add user_id, per-user index, and Clerk-aware RLS policies.
+-- Run this in Supabase → SQL Editor.
 
-create table if not exists public.transactions (
-  id           uuid primary key default gen_random_uuid(),
-  user_id      text not null,
-  amount       numeric(12, 2) not null check (amount > 0),
-  type         text not null check (type in ('expense', 'income')),
-  description  text,
-  occurred_on  date not null default current_date,
-  created_at   timestamptz not null default now()
-);
+-- 1. Add the column. (Nullable for now so the migration succeeds on a populated table.)
+alter table public.transactions add column if not exists user_id text;
 
--- Fast per-user lookups by date (newest first).
+-- 2. Backfill or wipe existing rows.
+--    DEV: throw away pre-auth rows so the not-null switch can land.
+delete from public.transactions where user_id is null;
+--    PROD instead: update with the owner's Clerk user id, e.g.
+--    update public.transactions set user_id = 'user_xxx' where user_id is null;
+
+-- 3. Lock the column down.
+alter table public.transactions alter column user_id set not null;
+
+-- 4. Replace the old date-only index with a (user_id, occurred_on) index.
+drop index if exists public.transactions_occurred_on_idx;
 create index if not exists transactions_user_occurred_idx
   on public.transactions (user_id, occurred_on desc, created_at desc);
 
--- Row Level Security: each user only ever sees their own rows.
--- The app no longer uses the SERVICE_ROLE key for user data — it uses the
--- ANON key together with a Clerk-issued JWT (Authorization: Bearer <token>),
--- and these policies enforce `auth.jwt() ->> 'sub' = user_id`.
+-- 5. Enforce RLS scoped by the Clerk-issued JWT.
 alter table public.transactions enable row level security;
 
 drop policy if exists "transactions_owner_select" on public.transactions;

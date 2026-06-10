@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { ClerkProvider } from "@clerk/nextjs";
 import { ThemeProvider } from "@/components/ThemeProvider";
 
 export const metadata: Metadata = {
@@ -34,7 +35,25 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full antialiased">
-        <ThemeProvider>{children}</ThemeProvider>
+        <ClerkProvider
+          appearance={{
+            variables: {
+              colorPrimary: "var(--accent)",
+              colorBackground: "var(--surface)",
+              colorText: "var(--ink)",
+              colorTextSecondary: "var(--muted)",
+              colorInputBackground: "var(--surface-2)",
+              colorInputText: "var(--ink)",
+              borderRadius: "var(--radius-xl)",
+              fontFamily: "var(--font-display)",
+            },
+            elements: {
+              card: "shadow-none border border-border",
+            },
+          }}
+        >
+          <ThemeProvider>{children}</ThemeProvider>
+        </ClerkProvider>
       </body>
     </html>
   );
