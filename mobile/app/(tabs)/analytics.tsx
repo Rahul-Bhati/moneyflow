@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { api, ApiError } from "@/lib/api";
 import { money } from "@/lib/format";
+import { useStableToken } from "@/lib/useStableToken";
 import { useTheme } from "@/lib/theme";
 import type { AnalyticsResponse, Period } from "@/lib/types";
 import { SegmentedFilter } from "@/components/ui/SegmentedFilter";
@@ -25,7 +26,10 @@ import { SegmentedFilter } from "@/components/ui/SegmentedFilter";
  */
 export default function AnalyticsScreen() {
   const { t } = useTheme();
-  const { getToken, isSignedIn } = useAuth();
+  const { isSignedIn } = useAuth();
+  // Stable getter — see lib/useStableToken.ts. Without this, Clerk's
+  // re-created getToken on every render would loop the load effect.
+  const getToken = useStableToken();
   const [period, setPeriod] = useState<Period>("month");
   const [data, setData] = useState<AnalyticsResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -105,6 +109,7 @@ function Panel({ title, children }: { title: string; children: React.ReactNode }
         borderColor: t.border,
         borderWidth: 1,
         borderRadius: t.radiusXl,
+        borderCurve: "continuous",
         padding: 16,
       }}
     >
@@ -146,6 +151,7 @@ function Stat({ label, value, color }: { label: string; value: number; color: st
         borderColor: t.border,
         borderWidth: 1,
         borderRadius: t.radiusLg,
+        borderCurve: "continuous",
         padding: 10,
       }}
     >

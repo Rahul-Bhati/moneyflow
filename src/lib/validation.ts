@@ -6,21 +6,27 @@ export const isoDateSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD");
 
-export const transactionInputSchema = z.object({
-  amount: z
-    .number({ message: "Amount must be a number" })
-    .finite("Amount must be a finite number")
-    .gt(0, "Enter an amount greater than zero")
-    .max(1_000_000_000, "Amount is too large"),
-  type: txTypeSchema,
-  description: z.string().max(140, "Description must be 140 characters or fewer"),
-  category: z
-    .string()
-    .trim()
-    .min(1, "Pick a category")
-    .max(40, "Category is too long"),
-  occurred_on: isoDateSchema,
-});
+// `.strict()` rejects unknown fields outright. Without it, a client could
+// post `{ amount, type, … , user_id: "victim" }` and Zod would silently strip
+// `user_id` — the service layer ignores it anyway, but contract-loose APIs
+// hide client bugs and grow attack surface.
+export const transactionInputSchema = z
+  .object({
+    amount: z
+      .number({ message: "Amount must be a number" })
+      .finite("Amount must be a finite number")
+      .gt(0, "Enter an amount greater than zero")
+      .max(1_000_000_000, "Amount is too large"),
+    type: txTypeSchema,
+    description: z.string().max(140, "Description must be 140 characters or fewer"),
+    category: z
+      .string()
+      .trim()
+      .min(1, "Pick a category")
+      .max(40, "Category is too long"),
+    occurred_on: isoDateSchema,
+  })
+  .strict();
 
 export type TransactionInput = z.infer<typeof transactionInputSchema>;
 
@@ -61,20 +67,22 @@ export const billStatusSchema = z.enum([
 
 export const recurrenceSchema = z.enum(["none", "weekly", "monthly", "yearly"]);
 
-export const billInputSchema = z.object({
-  name: z
-    .string()
-    .trim()
-    .min(1, "Give the bill a name")
-    .max(60, "Name must be 60 characters or fewer"),
-  amount: z
-    .number({ message: "Amount must be a number" })
-    .finite("Amount must be a finite number")
-    .gt(0, "Enter an amount greater than zero")
-    .max(1_000_000_000, "Amount is too large"),
-  due_on: isoDateSchema,
-  recurrence: recurrenceSchema,
-});
+export const billInputSchema = z
+  .object({
+    name: z
+      .string()
+      .trim()
+      .min(1, "Give the bill a name")
+      .max(60, "Name must be 60 characters or fewer"),
+    amount: z
+      .number({ message: "Amount must be a number" })
+      .finite("Amount must be a finite number")
+      .gt(0, "Enter an amount greater than zero")
+      .max(1_000_000_000, "Amount is too large"),
+    due_on: isoDateSchema,
+    recurrence: recurrenceSchema,
+  })
+  .strict();
 
 export type BillInput = z.infer<typeof billInputSchema>;
 
@@ -93,6 +101,7 @@ export const billUpdateSchema = z
     recurrence: recurrenceSchema.optional(),
     status: billStatusSchema.optional(),
   })
+  .strict()
   .refine((o) => Object.keys(o).length > 0, {
     message: "Send at least one field to update",
   });

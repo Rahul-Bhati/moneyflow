@@ -92,13 +92,19 @@ export default function BillsBoard({ initialBills }: { initialBills: Bill[] }) {
 
     // Optimistic: write the new explicit status. For "paid", also stamp
     // paid_on locally so the card immediately satisfies computeEffectiveStatus.
+    //
+    // Call `todayISO()` AT INVOCATION instead of reading `today` from state.
+    // `today` is hydration-gated and could be the empty initial value if the
+    // user somehow drags before mount commits. By the time a real drag fires,
+    // we're firmly on the client — `new Date()` is safe here.
+    const stamp = todayISO();
     setBills((prev) =>
       prev.map((b) =>
         b.id === billId
           ? {
               ...b,
               status: target,
-              paid_on: target === "paid" ? today : null,
+              paid_on: target === "paid" ? stamp : null,
             }
           : b
       )

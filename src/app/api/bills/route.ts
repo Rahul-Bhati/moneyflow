@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { revalidatePath } from "next/cache";
 import { createBill, listBills } from "@/lib/services/bills";
+import { billInputSchema, firstError } from "@/lib/validation";
 import { respond, withApi } from "@/lib/api/respond";
 
 export const runtime = "nodejs";
@@ -20,7 +21,14 @@ export const POST = withApi(async (req: NextRequest) => {
   } catch {
     return NextResponse.json({ error: "Body must be valid JSON" }, { status: 400 });
   }
-  const result = await createBill(body as Parameters<typeof createBill>[0]);
+  const parsed = billInputSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: firstError(parsed.error) },
+      { status: 400 }
+    );
+  }
+  const result = await createBill(parsed.data);
   if (result.ok) {
     revalidatePath("/bills");
     revalidatePath("/");

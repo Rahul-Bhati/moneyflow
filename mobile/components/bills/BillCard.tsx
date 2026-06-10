@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Pressable, Text, View } from "react-native";
 import { CalendarClock, Repeat } from "lucide-react-native";
 import { money, shortDate } from "@/lib/format";
@@ -11,7 +12,11 @@ const RECURRENCE_LABEL: Record<Bill["recurrence"], string> = {
   yearly: "Yearly",
 };
 
-export function BillCard({
+// memo-wrapped: in a FlashList that scrolls, unchanged cards skip render
+// even when the parent re-renders (e.g. after a single bill mutation).
+export const BillCard = memo(_BillCard);
+
+function _BillCard({
   bill,
   effectiveStatus,
   daysFromToday,
@@ -20,7 +25,10 @@ export function BillCard({
   bill: Bill;
   effectiveStatus: BillStatus;
   daysFromToday: number;
-  onLongPress: () => void;
+  // Dispatcher pattern (react-state-dispatcher rule): receive the bill back
+  // instead of capturing a per-row closure. Lets the parent's onLongPress
+  // be a stable useCallback, which is what makes this memo actually work.
+  onLongPress: (bill: Bill) => void;
 }) {
   const { t } = useTheme();
   const accent: Record<BillStatus, string> = {
@@ -31,11 +39,12 @@ export function BillCard({
   };
   return (
     <Pressable
-      onLongPress={onLongPress}
+      onLongPress={() => onLongPress(bill)}
       delayLongPress={250}
       style={({ pressed }) => ({
         backgroundColor: t.surface,
         borderRadius: t.radiusLg,
+        borderCurve: "continuous",
         borderColor: accent[effectiveStatus],
         borderWidth: 1,
         padding: 14,

@@ -13,6 +13,9 @@ export function Card({ style, children, ...props }: ViewProps) {
           borderColor: t.border,
           borderWidth: 1,
           borderRadius: t.radiusXl,
+          // iOS-style smoothed corners. No-op on Android — but the rounded
+          // look matters more on iOS where users notice the difference.
+          borderCurve: "continuous",
           padding: 16,
         },
         style,

@@ -24,6 +24,7 @@ export function SpendChart({ buckets }: { buckets: DailyTotal[] }) {
         borderColor: t.border,
         borderWidth: 1,
         borderRadius: t.radiusXl,
+        borderCurve: "continuous",
         padding: 16,
       }}
     >

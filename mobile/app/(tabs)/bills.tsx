@@ -1,5 +1,6 @@
 import { useAuth } from "@clerk/clerk-expo";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FlashList } from "@shopify/flash-list";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActionSheetIOS,
   ActivityIndicator,
@@ -18,6 +19,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { api, ApiError } from "@/lib/api";
 import { money } from "@/lib/format";
 import { computeEffectiveStatus, daysUntil, todayISO } from "@/lib/recurrence";
+import { useStableToken } from "@/lib/useStableToken";
 import { useTheme } from "@/lib/theme";
 import { BILL_COLUMNS, type Bill, type BillStatus } from "@/lib/types";
 import { AddBillSheet } from "@/components/bills/AddBillSheet";
@@ -37,7 +39,10 @@ const COLUMN_WIDTH = SCREEN_WIDTH;
  */
 export default function BillsScreen() {
   const { t } = useTheme();
-  const { getToken, isSignedIn } = useAuth();
+  const { isSignedIn } = useAuth();
+  // Stable getter — see lib/useStableToken.ts. Clerk's raw getToken would
+  // loop the load effect via the useCallback dep array.
+  const getToken = useStableToken();
   const [bills, setBills] = useState<Bill[]>([]);
   const [today, setToday] = useState<string>(todayISO());
   const [loading, setLoading] = useState(true);
@@ -255,73 +260,137 @@ export default function BillsScreen() {
         <FlatList
           ref={listRef}
           data={BILL_COLUMNS}
-          keyExtractor={(c) => c.key}
+          keyExtractor={columnKeyExtractor}
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
           onScroll={onScroll}
           scrollEventThrottle={32}
-          getItemLayout={(_, index) => ({
-            length: COLUMN_WIDTH,
-            offset: COLUMN_WIDTH * index,
-            index,
-          })}
-          renderItem={({ item: col }) => {
-            const list = grouped[col.key];
-            return (
-              <View style={{ width: COLUMN_WIDTH, paddingHorizontal: 16, paddingTop: 8 }}>
-                <Text style={{ color: t.muted, fontSize: 11, marginBottom: 10, fontWeight: "600" }}>
-                  {col.hint}
-                </Text>
-                <FlatList
-                  data={list}
-                  keyExtractor={(b) => b.id}
-                  contentContainerStyle={{ paddingBottom: 120, gap: 8 }}
-                  refreshControl={
-                    <RefreshControl
-                      refreshing={refreshing}
-                      onRefresh={() => {
-                        setRefreshing(true);
-                        load();
-                      }}
-                      tintColor={t.muted}
-                    />
-                  }
-                  renderItem={({ item: bill }) => (
-                    <BillCard
-                      bill={bill}
-                      effectiveStatus={col.key}
-                      daysFromToday={daysUntil(bill.due_on, today)}
-                      onLongPress={() => onLongPress(bill)}
-                    />
-                  )}
-                  ListEmptyComponent={
-                    <View
-                      style={{
-                        marginTop: 40,
-                        padding: 24,
-                        borderRadius: t.radiusXl,
-                        borderColor: t.borderStrong,
-                        borderStyle: "dashed",
-                        borderWidth: 1,
-                        alignItems: "center",
-                      }}
-                    >
-                      <Text style={{ color: t.muted, fontSize: 13 }}>
-                        {col.key === "paid"
-                          ? "Long-press a card to move it here when paid."
-                          : "Empty"}
-                      </Text>
-                    </View>
-                  }
-                />
-              </View>
-            );
-          }}
+          getItemLayout={getColumnLayout}
+          renderItem={({ item: col }) => (
+            <Column
+              col={col}
+              bills={grouped[col.key]}
+              today={today}
+              refreshing={refreshing}
+              onRefresh={() => {
+                setRefreshing(true);
+                load();
+              }}
+              onLongPress={onLongPress}
+            />
+          )}
         />
       )}
 
       <AddBillSheet onAdded={onAdded} />
     </SafeAreaView>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Hoisted helpers — defined at module scope so they have a stable identity
+// across every render (list-performance-function-references rule).
+// ---------------------------------------------------------------------------
+
+type ColumnDef = (typeof BILL_COLUMNS)[number];
+
+function columnKeyExtractor(c: ColumnDef): string {
+  return c.key;
+}
+
+function getColumnLayout(_: ArrayLike<ColumnDef> | null | undefined, index: number) {
+  return { length: COLUMN_WIDTH, offset: COLUMN_WIDTH * index, index };
+}
+
+function billKeyExtractor(b: Bill): string {
+  return b.id;
+}
+
+// memo-wrapped Column — renders a single page of the horizontal pager. The
+// outer FlatList only diff-renders 4 columns, but each Column owns a
+// FlashList of bills that virtualizes per-card.
+const Column = memo(_Column);
+
+function _Column({
+  col,
+  bills,
+  today,
+  refreshing,
+  onRefresh,
+  onLongPress,
+}: {
+  col: ColumnDef;
+  bills: Bill[];
+  today: string;
+  refreshing: boolean;
+  onRefresh: () => void;
+  onLongPress: (bill: Bill) => void;
+}) {
+  const { t } = useTheme();
+
+  // Stable renderItem — its closure captures `today` and `col.key`, both
+  // of which change rarely. BillCard is memoized so unchanged rows skip
+  // render entirely.
+  const renderItem = useCallback(
+    ({ item: bill }: { item: Bill }) => (
+      <BillCard
+        bill={bill}
+        effectiveStatus={col.key}
+        daysFromToday={daysUntil(bill.due_on, today)}
+        onLongPress={onLongPress}
+      />
+    ),
+    [col.key, today, onLongPress]
+  );
+
+  return (
+    <View style={{ width: COLUMN_WIDTH, paddingHorizontal: 16, paddingTop: 8 }}>
+      <Text style={{ color: t.muted, fontSize: 11, marginBottom: 10, fontWeight: "600" }}>
+        {col.hint}
+      </Text>
+      <FlashList
+        data={bills}
+        keyExtractor={billKeyExtractor}
+        contentContainerStyle={{ paddingBottom: 120 }}
+        ItemSeparatorComponent={BillGap}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={t.muted}
+          />
+        }
+        renderItem={renderItem}
+        ListEmptyComponent={<ColumnEmpty isPaid={col.key === "paid"} />}
+      />
+    </View>
+  );
+}
+
+function BillGap() {
+  return <View style={BILL_GAP_8} />;
+}
+const BILL_GAP_8 = { height: 8 };
+
+function ColumnEmpty({ isPaid }: { isPaid: boolean }) {
+  const { t } = useTheme();
+  return (
+    <View
+      style={{
+        marginTop: 40,
+        padding: 24,
+        borderRadius: t.radiusXl,
+        borderCurve: "continuous",
+        borderColor: t.borderStrong,
+        borderStyle: "dashed",
+        borderWidth: 1,
+        alignItems: "center",
+      }}
+    >
+      <Text style={{ color: t.muted, fontSize: 13 }}>
+        {isPaid ? "Long-press a card to move it here when paid." : "Empty"}
+      </Text>
+    </View>
   );
 }

@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { revalidatePath } from "next/cache";
 import { deleteBillById, updateBill } from "@/lib/services/bills";
+import { billUpdateSchema, firstError } from "@/lib/validation";
 import { respond, withApi } from "@/lib/api/respond";
 
 export const runtime = "nodejs";
@@ -26,7 +27,14 @@ export const PATCH = withApi(
         { status: 400 }
       );
     }
-    const result = await updateBill(id, body as Parameters<typeof updateBill>[1]);
+    const parsed = billUpdateSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: firstError(parsed.error) },
+        { status: 400 }
+      );
+    }
+    const result = await updateBill(id, parsed.data);
     if (result.ok) invalidate();
     return respond(result);
   }

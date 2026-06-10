@@ -1,6 +1,9 @@
 import { useAuth, useUser } from "@clerk/clerk-expo";
+// expo-image: memory-efficient caching, blurhash placeholders, automatic
+// disk persistence. RN's <Image> reloads from network on every screen mount.
+import { Image } from "expo-image";
 import { LogOut, Mail, User as UserIcon } from "lucide-react-native";
-import { Image, Pressable, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { apiBaseUrl } from "@/lib/api";
 import { useTheme } from "@/lib/theme";
@@ -29,6 +32,7 @@ export default function ProfileScreen() {
             borderColor: t.border,
             borderWidth: 1,
             borderRadius: t.radiusXl,
+            borderCurve: "continuous",
             padding: 18,
             flexDirection: "row",
             alignItems: "center",
@@ -38,6 +42,13 @@ export default function ProfileScreen() {
           {user?.imageUrl ? (
             <Image
               source={{ uri: user.imageUrl }}
+              // expo-image takes `contentFit` instead of `resizeMode`, and
+              // a `transition` ms for a fade-in when the bytes arrive.
+              contentFit="cover"
+              transition={150}
+              cachePolicy="memory-disk"
+              // No borderCurve here: expo-image's ImageStyle doesn't take it,
+              // and on a perfect circle continuous vs circular is identical.
               style={{ width: 56, height: 56, borderRadius: 28 }}
             />
           ) : (
@@ -72,6 +83,7 @@ export default function ProfileScreen() {
             borderColor: t.border,
             borderWidth: 1,
             borderRadius: t.radiusXl,
+            borderCurve: "continuous",
             padding: 16,
           }}
         >
@@ -87,6 +99,7 @@ export default function ProfileScreen() {
             borderColor: t.expenseSoft,
             borderWidth: 1,
             borderRadius: t.radiusXl,
+            borderCurve: "continuous",
             padding: 16,
             flexDirection: "row",
             alignItems: "center",

@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { Area, AreaChart, ResponsiveContainer } from "recharts";
 
 export interface SparklineProps {
@@ -15,7 +16,9 @@ const VAR = {
 } as const;
 
 export default function Sparkline({ values, tone, height = 32 }: SparklineProps) {
-  const data = values.map((v, i) => ({ i, v }));
+  // Recharts' `data` prop participates in its diff — a fresh array every
+  // render makes it re-render the SVG even when `values` didn't change.
+  const data = useMemo(() => values.map((v, i) => ({ i, v })), [values]);
   const stroke = VAR[tone];
   const gradientId = `sparkline-${tone}`;
 

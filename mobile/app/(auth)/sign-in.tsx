@@ -143,7 +143,7 @@ export default function SignInScreen() {
             style={({ pressed }) => ({
               marginTop: 32,
               height: 52,
-              borderRadius: 16,
+              borderRadius: 16, borderCurve: "continuous",
               backgroundColor: t.surface,
               borderColor: t.borderStrong,
               borderWidth: 1,
@@ -180,7 +180,7 @@ export default function SignInScreen() {
             style={{
               height: 50,
               paddingHorizontal: 16,
-              borderRadius: 14,
+              borderRadius: 14, borderCurve: "continuous",
               backgroundColor: t.surface,
               borderColor: t.border,
               borderWidth: 1,
@@ -198,7 +198,7 @@ export default function SignInScreen() {
               marginTop: 10,
               height: 50,
               paddingHorizontal: 16,
-              borderRadius: 14,
+              borderRadius: 14, borderCurve: "continuous",
               backgroundColor: t.surface,
               borderColor: t.border,
               borderWidth: 1,
@@ -212,7 +212,7 @@ export default function SignInScreen() {
             style={({ pressed }) => ({
               marginTop: 14,
               height: 52,
-              borderRadius: 16,
+              borderRadius: 16, borderCurve: "continuous",
               backgroundColor: t.accent,
               alignItems: "center",
               justifyContent: "center",

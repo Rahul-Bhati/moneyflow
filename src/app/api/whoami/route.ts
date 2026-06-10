@@ -15,6 +15,14 @@ export const dynamic = "force-dynamic";
  * exposes the requester's own auth state — but it adds surface area).
  */
 export async function GET(req: NextRequest) {
+  // Diagnostic-only: refuse to enumerate auth state in production. Leaving
+  // this open isn't a critical leak (it only echoes the caller's own state)
+  // but every extra endpoint is extra surface — kill it where we don't need
+  // it.
+  if (process.env.NODE_ENV === "production") {
+    return NextResponse.json({ error: "Not Found" }, { status: 404 });
+  }
+
   const authHeader = req.headers.get("authorization");
   const cookieHeader = req.headers.get("cookie");
 

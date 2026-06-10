@@ -15,6 +15,7 @@ export function SummaryCards({ totals, period }: { totals: Totals; period: Perio
         style={{
           backgroundColor: t.accent,
           borderRadius: t.radius2xl,
+          borderCurve: "continuous",
           paddingVertical: 26,
           paddingHorizontal: 24,
         }}
@@ -76,6 +77,7 @@ function Stat({
         borderColor: t.border,
         borderWidth: 1,
         borderRadius: t.radiusXl,
+        borderCurve: "continuous",
         padding: 14,
       }}
     >

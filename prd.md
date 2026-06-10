@@ -346,7 +346,7 @@ type BillsResponse = {
 
 ---
 
-## M8 — Documentation + CI
+## M8 — Documentation + CI ✅ done
 
 **Why:** Keep CLAUDE.md (and future contributors) accurate, prevent regressions on PRs.
 

@@ -34,4 +34,15 @@ export const tokenCache: TokenCache | undefined =
             console.warn("tokenCache.saveToken failed:", err);
           }
         },
+        // Clerk calls this on sign-out. Without it, the JWT stays on disk
+        // until SecureStore eventually overwrites the key on next sign-in —
+        // a stale token sitting in the keychain after logout is a smell we
+        // shouldn't ship.
+        async clearToken(key: string) {
+          try {
+            await SecureStore.deleteItemAsync(key);
+          } catch (err) {
+            console.warn("tokenCache.clearToken failed:", err);
+          }
+        },
       };

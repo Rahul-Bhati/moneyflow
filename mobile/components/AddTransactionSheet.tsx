@@ -94,7 +94,7 @@ export function AddTransactionSheet({ onAdded }: { onAdded: (t: Transaction) => 
           gap: 8,
           height: 56,
           paddingHorizontal: 22,
-          borderRadius: 28,
+          borderRadius: 28, borderCurve: "continuous",
           backgroundColor: t.accent,
           shadowColor: "#000",
           shadowOpacity: 0.25,
@@ -133,12 +133,12 @@ export function AddTransactionSheet({ onAdded }: { onAdded: (t: Transaction) => 
             maxHeight: "92%",
           }}
         >
-          <View style={{ alignSelf: "center", width: 40, height: 5, backgroundColor: t.borderStrong, borderRadius: 3, marginBottom: 14 }} />
+          <View style={{ alignSelf: "center", width: 40, height: 5, backgroundColor: t.borderStrong, borderRadius: 3, borderCurve: "continuous", marginBottom: 14 }} />
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
             <Text style={{ fontSize: 20, fontWeight: "800", color: t.ink }}>New entry</Text>
             <Pressable
               onPress={() => !pending && setOpen(false)}
-              style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: t.surface2, alignItems: "center", justifyContent: "center" }}
+              style={{ width: 36, height: 36, borderRadius: 18, borderCurve: "continuous", backgroundColor: t.surface2, alignItems: "center", justifyContent: "center" }}
             >
               <X color={t.muted} size={18} />
             </Pressable>
@@ -146,7 +146,7 @@ export function AddTransactionSheet({ onAdded }: { onAdded: (t: Transaction) => 
 
           <ScrollView keyboardShouldPersistTaps="handled">
             {/* type toggle */}
-            <View style={{ flexDirection: "row", gap: 6, backgroundColor: t.surface2, borderRadius: 16, padding: 4, marginBottom: 18 }}>
+            <View style={{ flexDirection: "row", gap: 6, backgroundColor: t.surface2, borderRadius: 16, borderCurve: "continuous", padding: 4, marginBottom: 18 }}>
               {(["expense", "income"] as TxType[]).map((k) => {
                 const active = type === k;
                 const tone = k === "income" ? t.income : t.expense;
@@ -158,7 +158,7 @@ export function AddTransactionSheet({ onAdded }: { onAdded: (t: Transaction) => 
                       flex: 1,
                       paddingVertical: 10,
                       alignItems: "center",
-                      borderRadius: 12,
+                      borderRadius: 12, borderCurve: "continuous",
                       backgroundColor: active ? tone : "transparent",
                     }}
                   >
@@ -209,7 +209,7 @@ export function AddTransactionSheet({ onAdded }: { onAdded: (t: Transaction) => 
               style={{
                 height: 48,
                 paddingHorizontal: 14,
-                borderRadius: 14,
+                borderRadius: 14, borderCurve: "continuous",
                 backgroundColor: t.surface,
                 borderColor: t.border,
                 borderWidth: 1,
@@ -247,7 +247,7 @@ export function AddTransactionSheet({ onAdded }: { onAdded: (t: Transaction) => 
                   marginTop: 8,
                   height: 44,
                   paddingHorizontal: 14,
-                  borderRadius: 14,
+                  borderRadius: 14, borderCurve: "continuous",
                   backgroundColor: t.surface,
                   borderColor: t.border,
                   borderWidth: 1,
@@ -267,7 +267,7 @@ export function AddTransactionSheet({ onAdded }: { onAdded: (t: Transaction) => 
               style={({ pressed }) => ({
                 marginTop: 16,
                 height: 54,
-                borderRadius: 16,
+                borderRadius: 16, borderCurve: "continuous",
                 backgroundColor: t.accent,
                 alignItems: "center",
                 justifyContent: "center",
@@ -310,7 +310,7 @@ function Chip({
       style={({ pressed }) => ({
         paddingHorizontal: 12,
         paddingVertical: 7,
-        borderRadius: 999,
+        borderRadius: 999, borderCurve: "continuous",
         borderWidth: 1,
         borderColor: active ? "transparent" : t.border,
         backgroundColor: active ? t.accent : t.surface,

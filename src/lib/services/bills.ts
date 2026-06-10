@@ -1,7 +1,6 @@
 import "server-only";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseForUser } from "@/lib/supabaseServer";
-import { computeEffectiveStatus, nextDueDate, todayISO } from "@/lib/recurrence";
+import { computeEffectiveStatus, todayISO } from "@/lib/recurrence";
 import type { Bill, BillStatus } from "@/lib/types";
 import {
   billInputSchema,
@@ -101,9 +100,17 @@ export async function createBill(
 }
 
 /**
- * Update a bill. If the patch transitions the bill into "paid", we run the
- * markPaid side-effects (insert a transaction + clone the next occurrence)
- * — anything else is a simple update.
+ * Update a bill.
+ *
+ * The "transition to paid" case has special semantics — it must also mirror
+ * the bill as a transaction and clone the next recurrence — so we delegate
+ * it to `markBillPaidById` which wraps all three writes in an atomic
+ * Postgres function (see 0004_mark_bill_paid_rpc.sql).
+ *
+ * Combo case (patch includes `status: "paid"` AND other fields): we apply
+ * the non-status edits first, THEN trigger the atomic paid flow. The atomic
+ * guarantee is preserved where it actually matters (the multi-write paid
+ * flow); the single-row non-status update can't be torn.
  */
 export async function updateBill(
   rawId: string,
@@ -114,44 +121,86 @@ export async function updateBill(
   const patchCheck = billUpdateSchema.safeParse(patch);
   if (!patchCheck.success) return fail(400, firstError(patchCheck.error));
 
-  // Status-only transition to "paid" → headline flow.
-  const isPayingOnly =
-    Object.keys(patchCheck.data).length === 1 && patchCheck.data.status === "paid";
-  if (isPayingOnly) return markBillPaidById(idCheck.data);
-
-  const ctx = await getSupabaseForUser();
-  if (!ctx) return fail(401, "Not signed in.");
-
-  const update: Record<string, unknown> = {};
   const p = patchCheck.data;
-  if (p.name !== undefined) update.name = p.name.slice(0, 60);
-  if (p.amount !== undefined) update.amount = Math.round(p.amount * 100) / 100;
-  if (p.due_on !== undefined) update.due_on = p.due_on;
-  if (p.recurrence !== undefined) update.recurrence = p.recurrence;
-  if (p.status !== undefined) {
-    update.status = p.status;
-    update.paid_on = p.status === "paid" ? todayISO() : null;
+
+  // Split: non-status fields apply with a plain UPDATE; transitioning to
+  // "paid" routes through the atomic RPC; transitioning to any other status
+  // is a single-write field like everything else.
+  const transitioningToPaid = p.status === "paid";
+  const nonStatusFields = {
+    name: p.name,
+    amount: p.amount,
+    due_on: p.due_on,
+    recurrence: p.recurrence,
+    // status is handled separately when it's "paid"; included here only when
+    // it's some other transition (back to upcoming/due_week/overdue).
+    status: transitioningToPaid ? undefined : p.status,
+  };
+  const hasNonStatusFields = Object.values(nonStatusFields).some(
+    (v) => v !== undefined
+  );
+
+  // Plain edits first (if any).
+  if (hasNonStatusFields) {
+    const ctx = await getSupabaseForUser();
+    if (!ctx) return fail(401, "Not signed in.");
+
+    const update: Record<string, unknown> = {};
+    if (nonStatusFields.name !== undefined)
+      update.name = nonStatusFields.name.slice(0, 60);
+    if (nonStatusFields.amount !== undefined)
+      update.amount = Math.round(nonStatusFields.amount * 100) / 100;
+    if (nonStatusFields.due_on !== undefined) update.due_on = nonStatusFields.due_on;
+    if (nonStatusFields.recurrence !== undefined)
+      update.recurrence = nonStatusFields.recurrence;
+    if (nonStatusFields.status !== undefined) {
+      update.status = nonStatusFields.status;
+      // Clear paid_on when transitioning AWAY from paid. (Transitioning TO
+      // paid goes through markBillPaidById below, which sets paid_on itself.)
+      update.paid_on = null;
+    }
+
+    const { data, error } = await ctx.supabase
+      .from("bills")
+      .update(update)
+      .eq("id", idCheck.data)
+      .select(COLUMNS)
+      .maybeSingle();
+
+    if (error) return fail(500, error.message);
+    if (!data) return fail(404, "Bill not found.");
+
+    if (!transitioningToPaid) return ok(shape(data));
+    // fall through to the paid transition
   }
 
-  const { data, error } = await ctx.supabase
-    .from("bills")
-    .update(update)
-    .eq("id", idCheck.data)
-    .select(COLUMNS)
-    .maybeSingle();
+  // Paid transition (covers both status-only and combo cases).
+  if (transitioningToPaid) return markBillPaidById(idCheck.data);
 
-  if (error) return fail(500, error.message);
-  if (!data) return fail(404, "Bill not found.");
-
-  // If this update is a paid-and-edit combo, we still need to clone the
-  // recurrence and insert the mirror transaction.
-  if (p.status === "paid") {
-    await postPaidSideEffects(ctx.supabase, ctx.userId, shape(data));
-  }
-
-  return ok(shape(data));
+  // Neither branch fired — empty patch (Zod's refine should have caught this
+  // already, but be safe).
+  return fail(400, "Send at least one field to update");
 }
 
+/**
+ * Mark a bill as paid — atomic.
+ *
+ * Delegates to the `mark_bill_paid(uuid)` Postgres function (defined in
+ * 0004_mark_bill_paid_rpc.sql) which wraps three writes in a single
+ * transaction: stamp the bill paid, mirror as an expense transaction, and
+ * for recurring bills schedule the next period.
+ *
+ * Why an RPC instead of a JS sequence: Supabase's JS client doesn't expose
+ * multi-statement transactions. Without the function, a failure on the
+ * transaction insert or clone insert would leave the bill stamped paid but
+ * the bookkeeping out of sync — and we'd just `console.error` and pretend
+ * everything was fine. Now it's all-or-nothing, enforced by Postgres.
+ *
+ * Security: the function uses `security invoker` (default), so RLS still
+ * scopes every row to the caller. A user can only mark THEIR OWN bills paid;
+ * the function's `update … where id = …` matches zero rows for someone
+ * else's bill and we return 404.
+ */
 export async function markBillPaidById(
   rawId: string
 ): Promise<ServiceResult<Bill>> {
@@ -161,61 +210,25 @@ export async function markBillPaidById(
   const ctx = await getSupabaseForUser();
   if (!ctx) return fail(401, "Not signed in.");
 
-  const today = todayISO();
-  const { data, error } = await ctx.supabase
-    .from("bills")
-    .update({ status: "paid", paid_on: today })
-    .eq("id", idCheck.data)
-    .select(COLUMNS)
-    .maybeSingle();
+  const { data, error } = await ctx.supabase.rpc("mark_bill_paid", {
+    p_bill_id: idCheck.data,
+  });
 
-  if (error) return fail(500, error.message);
+  if (error) {
+    // The function raises `bill_not_found` (Postgres errcode P0002) when the
+    // id is unknown or doesn't belong to the caller. Map that to 404.
+    if (error.code === "P0002" || error.message?.includes("bill_not_found")) {
+      return fail(404, "Bill not found.");
+    }
+    return fail(500, error.message);
+  }
   if (!data) return fail(404, "Bill not found.");
 
-  const bill = shape(data);
-  await postPaidSideEffects(ctx.supabase, ctx.userId, bill);
-  return ok(bill);
-}
-
-/**
- * Idempotent-friendly side-effects of a bill becoming paid:
- *   1) Mirror it as an expense transaction (category "Bills").
- *   2) For recurring bills, insert a fresh "upcoming" bill at the next due
- *      date so the user never has to recreate it.
- *
- * Failures here are logged but don't unwind the paid stamp — UI consistency
- * matters more than perfect bookkeeping on the side-effects.
- */
-async function postPaidSideEffects(
-  supabase: SupabaseClient,
-  userId: string,
-  bill: Bill
-): Promise<void> {
-  const today = todayISO();
-
-  const { error: txError } = await supabase.from("transactions").insert({
-    user_id: userId,
-    amount: Math.round(bill.amount * 100) / 100,
-    type: "expense",
-    description: `Paid: ${bill.name}`,
-    category: "Bills",
-    occurred_on: today,
-  });
-  if (txError) console.error("markBillPaid: tx insert failed:", txError.message);
-
-  const next = nextDueDate(bill.due_on, bill.recurrence);
-  if (next) {
-    const { error: cloneError } = await supabase.from("bills").insert({
-      user_id: userId,
-      name: bill.name,
-      amount: Math.round(bill.amount * 100) / 100,
-      due_on: next,
-      status: "upcoming",
-      recurrence: bill.recurrence,
-    });
-    if (cloneError)
-      console.error("markBillPaid: clone failed:", cloneError.message);
-  }
+  // `rpc` returning a `setof` / scalar record comes back as either a single
+  // object or a 1-element array depending on the function signature. Our
+  // function returns `public.bills` (a single row), so it's an object.
+  const row = Array.isArray(data) ? data[0] : data;
+  return ok(shape(row as Record<string, unknown>));
 }
 
 export async function deleteBillById(

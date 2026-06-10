@@ -16,7 +16,19 @@ export function respond<T>(
   successStatus = 200
 ): NextResponse {
   if (!result.ok) {
-    return NextResponse.json({ error: result.error }, { status: result.status });
+    // 4xx errors are user-facing ("Amount must be > 0", "Invalid id") — pass
+    // them through. 5xx errors usually wrap a raw Supabase/Postgres message
+    // (table names, constraint hints, query bits) that we don't want to ship
+    // to the client. Log the original and respond with a generic message.
+    const isServerError = result.status >= 500;
+    if (isServerError) {
+      logApiError(new Error(`service error: ${result.error}`));
+    }
+    const safeError =
+      isServerError && process.env.NODE_ENV === "production"
+        ? "Internal server error"
+        : result.error;
+    return NextResponse.json({ error: safeError }, { status: result.status });
   }
   return NextResponse.json(result.data, { status: successStatus });
 }

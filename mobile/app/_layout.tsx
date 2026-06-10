@@ -1,7 +1,7 @@
 import { ClerkProvider, useAuth } from "@clerk/clerk-expo";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { tokenCache } from "@/lib/token-cache";
@@ -42,13 +42,20 @@ function AuthRouter() {
   // Dev-only sanity check: when the user is signed in, hit /api/whoami once
   // and log what the server sees. This makes Bearer-auth bugs visible
   // without needing a debugger — they just appear in the Metro terminal.
+  //
+  // NOTE: we deliberately depend only on `isLoaded` + `isSignedIn` here.
+  // Clerk's `getToken` is a NEW function reference on every render — if it's
+  // in the dep array the effect re-fires forever (which was hammering
+  // /api/whoami in our logs).
+  const getTokenRef = useRef(getToken);
+  getTokenRef.current = getToken;
   useEffect(() => {
     if (!__DEV__ || !isLoaded || !isSignedIn) return;
     const base = process.env.EXPO_PUBLIC_API_BASE_URL;
     if (!base) return;
     (async () => {
       try {
-        const token = await getToken();
+        const token = await getTokenRef.current();
         const res = await fetch(`${base}/api/whoami`, {
           headers: { Authorization: `Bearer ${token ?? ""}` },
         });
@@ -83,7 +90,9 @@ function AuthRouter() {
         console.warn("[whoami] failed:", e);
       }
     })();
-  }, [isLoaded, isSignedIn, getToken]);
+    // Intentionally omit getToken — read via ref above. See comment.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoaded, isSignedIn]);
 
   if (!isLoaded) {
     return (

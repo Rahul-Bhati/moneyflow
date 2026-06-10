@@ -4,7 +4,11 @@ import {
   createTransaction,
   listTransactions,
 } from "@/lib/services/transactions";
-import { firstError, txListQuerySchema } from "@/lib/validation";
+import {
+  firstError,
+  transactionInputSchema,
+  txListQuerySchema,
+} from "@/lib/validation";
 import { respond, withApi } from "@/lib/api/respond";
 
 export const runtime = "nodejs";
@@ -29,7 +33,18 @@ export const POST = withApi(async (req: NextRequest) => {
   } catch {
     return NextResponse.json({ error: "Body must be valid JSON" }, { status: 400 });
   }
-  const result = await createTransaction(body as Parameters<typeof createTransaction>[0]);
+  // Route-level parse: removes the `as` cast (which silently bypassed TS) and
+  // means malformed payloads get a clean 400 here instead of relying on the
+  // service to bounce. Service still re-parses for defense-in-depth — the
+  // same schema is used in both places, so the cost is one extra microsecond.
+  const parsed = transactionInputSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: firstError(parsed.error) },
+      { status: 400 }
+    );
+  }
+  const result = await createTransaction(parsed.data);
   if (result.ok) {
     revalidatePath("/");
     revalidatePath("/analytics");

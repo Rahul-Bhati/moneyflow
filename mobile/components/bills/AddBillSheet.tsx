@@ -78,7 +78,7 @@ export function AddBillSheet({ onAdded }: { onAdded: (b: Bill) => void }) {
           gap: 8,
           height: 56,
           paddingHorizontal: 22,
-          borderRadius: 28,
+          borderRadius: 28, borderCurve: "continuous",
           backgroundColor: t.accent,
           shadowColor: "#000",
           shadowOpacity: 0.25,
@@ -117,12 +117,12 @@ export function AddBillSheet({ onAdded }: { onAdded: (b: Bill) => void }) {
             maxHeight: "92%",
           }}
         >
-          <View style={{ alignSelf: "center", width: 40, height: 5, backgroundColor: t.borderStrong, borderRadius: 3, marginBottom: 14 }} />
+          <View style={{ alignSelf: "center", width: 40, height: 5, backgroundColor: t.borderStrong, borderRadius: 3, borderCurve: "continuous", marginBottom: 14 }} />
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
             <Text style={{ fontSize: 20, fontWeight: "800", color: t.ink }}>New bill</Text>
             <Pressable
               onPress={() => !pending && setOpen(false)}
-              style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: t.surface2, alignItems: "center", justifyContent: "center" }}
+              style={{ width: 36, height: 36, borderRadius: 18, borderCurve: "continuous", backgroundColor: t.surface2, alignItems: "center", justifyContent: "center" }}
             >
               <X color={t.muted} size={18} />
             </Pressable>
@@ -138,7 +138,7 @@ export function AddBillSheet({ onAdded }: { onAdded: (b: Bill) => void }) {
               style={{
                 height: 48,
                 paddingHorizontal: 14,
-                borderRadius: 14,
+                borderRadius: 14, borderCurve: "continuous",
                 backgroundColor: t.surface,
                 borderColor: t.border,
                 borderWidth: 1,
@@ -175,7 +175,7 @@ export function AddBillSheet({ onAdded }: { onAdded: (b: Bill) => void }) {
                 alignItems: "center",
                 height: 50,
                 paddingHorizontal: 14,
-                borderRadius: 14,
+                borderRadius: 14, borderCurve: "continuous",
                 backgroundColor: t.surface,
                 borderColor: t.border,
                 borderWidth: 1,
@@ -205,7 +205,7 @@ export function AddBillSheet({ onAdded }: { onAdded: (b: Bill) => void }) {
                     style={{
                       paddingHorizontal: 12,
                       paddingVertical: 7,
-                      borderRadius: 999,
+                      borderRadius: 999, borderCurve: "continuous",
                       borderWidth: 1,
                       borderColor: active ? "transparent" : t.border,
                       backgroundColor: active ? t.accent : t.surface,
@@ -235,7 +235,7 @@ export function AddBillSheet({ onAdded }: { onAdded: (b: Bill) => void }) {
               style={({ pressed }) => ({
                 marginTop: 16,
                 height: 54,
-                borderRadius: 16,
+                borderRadius: 16, borderCurve: "continuous",
                 backgroundColor: t.accent,
                 alignItems: "center",
                 justifyContent: "center",

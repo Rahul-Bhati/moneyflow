@@ -1,18 +1,19 @@
 import { useAuth } from "@clerk/clerk-expo";
+import { FlashList } from "@shopify/flash-list";
 import { Trash2 } from "lucide-react-native";
-import { useCallback, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Pressable,
   RefreshControl,
-  ScrollView,
   Text,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { api, ApiError } from "@/lib/api";
 import { money, periodLabel } from "@/lib/format";
+import { useStableToken } from "@/lib/useStableToken";
 import { useTheme } from "@/lib/theme";
 import type {
   DailyTotal,
@@ -37,7 +38,10 @@ import { SummaryCards } from "@/components/SummaryCards";
  */
 export default function HomeScreen() {
   const { t } = useTheme();
-  const { getToken, isSignedIn } = useAuth();
+  const { isSignedIn } = useAuth();
+  // Stable identity — Clerk's raw getToken would re-create `load` every
+  // render and put us in a refetch loop. See lib/useStableToken.ts.
+  const getToken = useStableToken();
   const [period, setPeriod] = useState<Period>("month");
   const [data, setData] = useState<ListTransactionsResponse | null>(null);
   const [daily, setDaily] = useState<DailyTotal[]>([]);
@@ -117,6 +121,26 @@ export default function HomeScreen() {
     [data, getToken, load, period]
   );
 
+  // Slice once per render rather than inside the JSX so identity is stable
+  // (FlashList diffs the `data` array reference).
+  const visibleTx = useMemo(
+    () => data?.transactions.slice(0, 20) ?? [],
+    [data?.transactions]
+  );
+
+  // Stable `keyExtractor` for FlashList — defined outside the JSX so it's
+  // not allocated on every render.
+  const keyExtractor = useCallback((tx: Transaction) => tx.id, []);
+
+  // Stable `renderItem` — uses the captured `onDelete` which is itself a
+  // useCallback, so identity flips only when transactions or token change.
+  const renderItem = useCallback(
+    ({ item }: { item: Transaction }) => (
+      <Row tx={item} onDelete={onDelete} />
+    ),
+    [onDelete]
+  );
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: t.bg }} edges={["top"]}>
       <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 6 }}>
@@ -128,30 +152,17 @@ export default function HomeScreen() {
         </Text>
       </View>
 
-      <ScrollView
-        contentContainerStyle={{ padding: 16, paddingBottom: 140, gap: 14 }}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => {
-              setRefreshing(true);
-              load(period);
-            }}
-            tintColor={t.muted}
-          />
-        }
-      >
-        <SegmentedFilter value={period} onChange={setPeriod} />
-
-        {loading && !data ? (
-          <View style={{ paddingVertical: 80, alignItems: "center" }}>
-            <ActivityIndicator color={t.muted} />
-          </View>
-        ) : error ? (
+      {loading && !data ? (
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+          <ActivityIndicator color={t.muted} />
+        </View>
+      ) : error ? (
+        <View style={{ padding: 16 }}>
           <View
             style={{
               padding: 16,
               borderRadius: t.radiusXl,
+              borderCurve: "continuous",
               borderColor: t.expenseSoft,
               borderWidth: 1,
               backgroundColor: t.surface,
@@ -162,69 +173,123 @@ export default function HomeScreen() {
               <Text style={{ color: t.ink, fontWeight: "700" }}>Try again</Text>
             </Pressable>
           </View>
-        ) : data ? (
-          <>
-            <SummaryCards totals={data.totals} period={period} />
-            <SpendChart buckets={daily} />
-            <History transactions={data.transactions.slice(0, 20)} onDelete={onDelete} />
-          </>
-        ) : null}
-      </ScrollView>
+        </View>
+      ) : (
+        // FlashList is the OUTER scrollable. The page header (summary, chart,
+        // history title) lives in `ListHeaderComponent` so the transaction
+        // rows below virtualize properly. Mixing a ScrollView with an inner
+        // FlatList/.map() rendered ALL transactions even when off-screen.
+        <FlashList
+          data={visibleTx}
+          keyExtractor={keyExtractor}
+          renderItem={renderItem}
+          contentContainerStyle={{ padding: 16, paddingBottom: 140 }}
+          ItemSeparatorComponent={ItemGap}
+          ListHeaderComponent={
+            <ListHeader
+              period={period}
+              setPeriod={setPeriod}
+              totals={data?.totals}
+              daily={daily}
+              hasHistory={visibleTx.length > 0}
+            />
+          }
+          ListEmptyComponent={<EmptyHistory />}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => {
+                setRefreshing(true);
+                load(period);
+              }}
+              tintColor={t.muted}
+            />
+          }
+        />
+      )}
 
       <AddTransactionSheet onAdded={onAdded} />
     </SafeAreaView>
   );
 }
 
-function History({
-  transactions,
-  onDelete,
+// ---------------------------------------------------------------------------
+// Sub-components — extracted out of the render body so their identity is
+// stable, and their styles can live in StyleSheet-compatible plain objects
+// instead of being reallocated each render.
+// ---------------------------------------------------------------------------
+
+function ItemGap() {
+  return <View style={GAP_8} />;
+}
+const GAP_8 = { height: 8 };
+
+function ListHeader({
+  period,
+  setPeriod,
+  totals,
+  daily,
+  hasHistory,
 }: {
-  transactions: Transaction[];
-  onDelete: (id: string) => void;
+  period: Period;
+  setPeriod: (p: Period) => void;
+  totals: ListTransactionsResponse["totals"] | undefined;
+  daily: DailyTotal[];
+  hasHistory: boolean;
 }) {
   const { t } = useTheme();
-  if (transactions.length === 0) {
-    return (
-      <View
-        style={{
-          padding: 18,
-          borderRadius: t.radiusXl,
-          backgroundColor: t.surface,
-          borderColor: t.border,
-          borderWidth: 1,
-        }}
-      >
-        <Text style={{ color: t.muted, textAlign: "center" }}>
-          No entries yet — tap “Add entry” to get going.
-        </Text>
-      </View>
-    );
-  }
   return (
-    <View>
-      <Text
-        style={{
-          fontSize: 11,
-          fontWeight: "700",
-          color: t.muted,
-          letterSpacing: 0.6,
-          textTransform: "uppercase",
-          marginBottom: 8,
-        }}
-      >
-        History
-      </Text>
-      <View style={{ gap: 8 }}>
-        {transactions.map((tx) => (
-          <Row key={tx.id} tx={tx} onDelete={() => onDelete(tx.id)} />
-        ))}
-      </View>
+    <View style={{ gap: 14, marginBottom: hasHistory ? 14 : 0 }}>
+      <SegmentedFilter value={period} onChange={setPeriod} />
+      {totals ? (
+        <>
+          <SummaryCards totals={totals} period={period} />
+          <SpendChart buckets={daily} />
+          {hasHistory ? (
+            <Text
+              style={{
+                fontSize: 11,
+                fontWeight: "700",
+                color: t.muted,
+                letterSpacing: 0.6,
+                textTransform: "uppercase",
+                marginTop: 6,
+              }}
+            >
+              History
+            </Text>
+          ) : null}
+        </>
+      ) : null}
     </View>
   );
 }
 
-function Row({ tx, onDelete }: { tx: Transaction; onDelete: () => void }) {
+function EmptyHistory() {
+  const { t } = useTheme();
+  return (
+    <View
+      style={{
+        padding: 18,
+        borderRadius: t.radiusXl,
+        borderCurve: "continuous",
+        backgroundColor: t.surface,
+        borderColor: t.border,
+        borderWidth: 1,
+      }}
+    >
+      <Text style={{ color: t.muted, textAlign: "center" }}>
+        No entries yet — tap "Add entry" to get going.
+      </Text>
+    </View>
+  );
+}
+
+// memo: when the parent re-renders for any reason (period change, new
+// transaction added at the top), unchanged rows stay mounted and skip render.
+const Row = memo(_Row);
+
+function _Row({ tx, onDelete }: { tx: Transaction; onDelete: (id: string) => void }) {
   const { t } = useTheme();
   const income = tx.type === "income";
   return (
@@ -236,6 +301,7 @@ function Row({ tx, onDelete }: { tx: Transaction; onDelete: () => void }) {
         borderColor: t.border,
         borderWidth: 1,
         borderRadius: t.radiusLg,
+        borderCurve: "continuous",
         padding: 12,
       }}
     >
@@ -260,7 +326,11 @@ function Row({ tx, onDelete }: { tx: Transaction; onDelete: () => void }) {
         {money(tx.amount)}
       </Text>
       <Pressable
-        onPress={onDelete}
+        // Dispatcher pattern (react-state-dispatcher rule): pass tx.id back
+        // to the parent's stable onDelete instead of capturing a per-row
+        // closure. Lets the parent's useCallback identity stay stable, which
+        // is what makes `Row` memo-friendly.
+        onPress={() => onDelete(tx.id)}
         hitSlop={8}
         style={({ pressed }) => ({
           marginLeft: 10,

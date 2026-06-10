@@ -4,6 +4,7 @@ import {
   deleteTransactionById,
   updateTransaction,
 } from "@/lib/services/transactions";
+import { firstError, transactionUpdateSchema } from "@/lib/validation";
 import { respond, withApi } from "@/lib/api/respond";
 
 export const runtime = "nodejs";
@@ -28,10 +29,14 @@ export const PATCH = withApi(
         { status: 400 }
       );
     }
-    const result = await updateTransaction(
-      id,
-      body as Parameters<typeof updateTransaction>[1]
-    );
+    const parsed = transactionUpdateSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: firstError(parsed.error) },
+        { status: 400 }
+      );
+    }
+    const result = await updateTransaction(id, parsed.data);
     if (result.ok) invalidate();
     return respond(result);
   }

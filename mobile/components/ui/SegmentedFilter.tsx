@@ -16,7 +16,7 @@ export function SegmentedFilter({
       style={{
         flexDirection: "row",
         backgroundColor: t.surface2,
-        borderRadius: 999,
+        borderRadius: 999, borderCurve: "continuous",
         padding: 4,
       }}
     >
@@ -30,7 +30,7 @@ export function SegmentedFilter({
               flex: 1,
               paddingVertical: 9,
               alignItems: "center",
-              borderRadius: 999,
+              borderRadius: 999, borderCurve: "continuous",
               backgroundColor: active ? t.accent : "transparent",
               opacity: pressed ? 0.85 : 1,
             })}
