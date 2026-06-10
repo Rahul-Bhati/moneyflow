@@ -14,6 +14,11 @@ export const transactionInputSchema = z.object({
     .max(1_000_000_000, "Amount is too large"),
   type: txTypeSchema,
   description: z.string().max(140, "Description must be 140 characters or fewer"),
+  category: z
+    .string()
+    .trim()
+    .min(1, "Pick a category")
+    .max(40, "Category is too long"),
   occurred_on: isoDateSchema,
 });
 

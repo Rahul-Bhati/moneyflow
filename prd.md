@@ -129,7 +129,7 @@ A milestone is "done" when:
 
 ---
 
-## M3 — Rich analytics page
+## M3 — Rich analytics page ✅ done
 
 **Why:** "Where does my money go" deserves more than a single bar chart. This is the screen people show their friends.
 

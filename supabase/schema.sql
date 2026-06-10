@@ -7,6 +7,7 @@ create table if not exists public.transactions (
   amount       numeric(12, 2) not null check (amount > 0),
   type         text not null check (type in ('expense', 'income')),
   description  text,
+  category     text not null default 'Uncategorized',
   occurred_on  date not null default current_date,
   created_at   timestamptz not null default now()
 );
@@ -14,6 +15,10 @@ create table if not exists public.transactions (
 -- Fast per-user lookups by date (newest first).
 create index if not exists transactions_user_occurred_idx
   on public.transactions (user_id, occurred_on desc, created_at desc);
+
+-- Cheap lookup for category-grouped queries on a user.
+create index if not exists transactions_user_category_idx
+  on public.transactions (user_id, category);
 
 -- Row Level Security: each user only ever sees their own rows.
 -- The app no longer uses the SERVICE_ROLE key for user data — it uses the

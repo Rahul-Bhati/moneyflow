@@ -2,7 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
+import Link from "next/link";
 import { UserButton } from "@clerk/nextjs";
+import { BarChart3 } from "lucide-react";
 import { deleteTransaction } from "@/app/actions";
 import { type Transaction, type Period } from "@/lib/types";
 import { filterByPeriod, totals, chartBuckets, periodLabel } from "@/lib/format";
@@ -55,6 +57,13 @@ export default function Dashboard({
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Link
+            href="/analytics"
+            aria-label="Open analytics"
+            className="flex size-9 items-center justify-center rounded-full text-muted transition hover:bg-surface-2 hover:text-ink active:scale-95"
+          >
+            <BarChart3 className="size-4" />
+          </Link>
           <ThemeToggle />
           <UserButton
             appearance={{
@@ -77,7 +86,7 @@ export default function Dashboard({
 
         {mounted ? (
           <>
-            <SummaryCards totals={periodTotals} period={period} />
+            <SummaryCards totals={periodTotals} period={period} transactions={transactions} />
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}

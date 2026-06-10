@@ -5,6 +5,7 @@ export interface Transaction {
   amount: number; // always stored as a positive number
   type: TxType;
   description: string;
+  category: string;
   occurred_on: string; // ISO date string: "YYYY-MM-DD"
   created_at: string; // ISO timestamp
 }
@@ -17,6 +18,23 @@ export const PERIODS: { key: Period; label: string }[] = [
   { key: "month", label: "Month" },
   { key: "year", label: "Year" },
 ];
+
+/**
+ * Built-in categories. Users can also type a custom one — anything goes in the
+ * `category` text column. Keep this list short; long lists overwhelm.
+ */
+export const BUILT_IN_CATEGORIES = [
+  "Food",
+  "Travel",
+  "Bills",
+  "Shopping",
+  "Health",
+  "Entertainment",
+  "Income",
+  "Other",
+] as const;
+
+export const UNCATEGORIZED = "Uncategorized";
 
 /**
  * Currency for display. Defaults to Indian Rupee.

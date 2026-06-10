@@ -12,8 +12,10 @@ import {
   isWithinInterval,
   parseISO,
   format,
+  subMonths,
+  subDays,
 } from "date-fns";
-import { CURRENCY, LOCALE, type Period, type Transaction } from "./types";
+import { CURRENCY, LOCALE, UNCATEGORIZED, type Period, type Transaction } from "./types";
 
 const WEEK_OPTS = { weekStartsOn: 1 as const }; // Monday
 
@@ -175,4 +177,100 @@ export function dayHeading(iso: string): string {
   if (diff === 0) return "Today";
   if (diff === 1) return "Yesterday";
   return format(d, "EEEE, d MMMM");
+}
+
+// ─── Analytics helpers (M3) ────────────────────────────────────────────────
+
+export interface CategoryTotal {
+  category: string;
+  expense: number;
+  income: number;
+  count: number;
+}
+
+/** Sum income + expense per category. Sorted by expense desc (biggest spenders first). */
+export function byCategory(txs: Transaction[]): CategoryTotal[] {
+  const map = new Map<string, CategoryTotal>();
+  for (const t of txs) {
+    const key = t.category?.trim() || UNCATEGORIZED;
+    const row = map.get(key) ?? { category: key, expense: 0, income: 0, count: 0 };
+    if (t.type === "income") row.income += t.amount;
+    else row.expense += t.amount;
+    row.count += 1;
+    map.set(key, row);
+  }
+  return [...map.values()].sort((a, b) => b.expense - a.expense || b.income - a.income);
+}
+
+export interface DailyTotal {
+  date: string; // ISO YYYY-MM-DD
+  expense: number;
+  income: number;
+}
+
+/**
+ * Spend/earn per day for the last `days` days (oldest → newest, inclusive of today).
+ * Used by the heatmap and by sparklines on summary cards.
+ */
+export function dailyTotals(
+  txs: Transaction[],
+  days: number,
+  ref: Date = new Date()
+): DailyTotal[] {
+  const end = startOfDay(ref);
+  const start = subDays(end, days - 1);
+  const all = eachDayOfInterval({ start, end });
+  const buckets = new Map<string, DailyTotal>();
+  for (const d of all) {
+    const iso = format(d, "yyyy-MM-dd");
+    buckets.set(iso, { date: iso, expense: 0, income: 0 });
+  }
+  for (const t of txs) {
+    const row = buckets.get(t.occurred_on);
+    if (!row) continue;
+    if (t.type === "income") row.income += t.amount;
+    else row.expense += t.amount;
+  }
+  return [...buckets.values()];
+}
+
+export interface MonthTotal {
+  month: string; // ISO start of month, e.g. "2026-06"
+  label: string; // short display, e.g. "Jun"
+  income: number;
+  expense: number;
+  net: number;
+}
+
+/** Monthly totals for the last `n` months (oldest → newest, inclusive of current). */
+export function monthTrend(
+  txs: Transaction[],
+  n: number,
+  ref: Date = new Date()
+): MonthTotal[] {
+  const start = startOfMonth(subMonths(ref, n - 1));
+  const end = endOfMonth(ref);
+  const months = eachMonthOfInterval({ start, end });
+  return months.map((m) => {
+    const inMonth = txs.filter((t) => {
+      const d = txDate(t);
+      return d.getFullYear() === m.getFullYear() && d.getMonth() === m.getMonth();
+    });
+    const tt = totals(inMonth);
+    return {
+      month: format(m, "yyyy-MM"),
+      label: format(m, "MMM"),
+      income: tt.income,
+      expense: tt.expense,
+      net: tt.net,
+    };
+  });
+}
+
+/** Top N expense transactions for a given list. */
+export function topExpenses(txs: Transaction[], n: number): Transaction[] {
+  return txs
+    .filter((t) => t.type === "expense")
+    .sort((a, b) => b.amount - a.amount)
+    .slice(0, n);
 }

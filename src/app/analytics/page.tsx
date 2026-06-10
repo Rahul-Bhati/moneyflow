@@ -1,21 +1,19 @@
 import { getSupabaseForUser, isConfigured } from "@/lib/supabaseServer";
 import type { Transaction } from "@/lib/types";
-import Dashboard from "@/components/Dashboard";
+import AnalyticsView from "@/components/analytics/AnalyticsView";
 import SetupNotice from "@/components/SetupNotice";
 
-// Always render fresh — this is a personal, frequently-updated dashboard.
 export const dynamic = "force-dynamic";
 
 async function getTransactions(): Promise<Transaction[]> {
   const ctx = await getSupabaseForUser();
   if (!ctx) return [];
-
   const { data, error } = await ctx.supabase
     .from("transactions")
     .select("id, amount, type, description, category, occurred_on, created_at")
     .order("occurred_on", { ascending: false })
     .order("created_at", { ascending: false })
-    .limit(2000);
+    .limit(5000);
 
   if (error) {
     console.error("Supabase fetch error:", error.message);
@@ -29,8 +27,8 @@ async function getTransactions(): Promise<Transaction[]> {
   })) as Transaction[];
 }
 
-export default async function Home() {
+export default async function AnalyticsPage() {
   if (!isConfigured()) return <SetupNotice />;
   const transactions = await getTransactions();
-  return <Dashboard initialTransactions={transactions} />;
+  return <AnalyticsView initialTransactions={transactions} />;
 }
