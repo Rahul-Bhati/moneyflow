@@ -267,7 +267,7 @@ type BillsResponse = {
 
 ---
 
-## M6 — Expo mobile app (full parity)
+## M6 — Expo mobile app (full parity) ✅ done
 
 **Why:** Mobile-first is in our DNA, but a real native app beats mobile web for daily logging, biometrics, push, and widgets later.
 
