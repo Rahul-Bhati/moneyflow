@@ -79,3 +79,71 @@ export const RECURRENCES: { key: Recurrence; label: string }[] = [
   { key: "monthly", label: "Monthly" },
   { key: "yearly", label: "Yearly" },
 ];
+
+// ---------------------------------------------------------------------------
+// Spaces — privacy-scoped shared expense splitting (M9)
+// ---------------------------------------------------------------------------
+export type MemberRole = "owner" | "member";
+
+export interface Space {
+  id: string;
+  name: string;
+  created_by: string;
+  created_at: string;
+  // Filled by listSpaces(): the viewer's net across this space. Positive = you
+  // will receive; negative = you will pay; 0 = settled.
+  myNet?: number;
+}
+
+export interface SpaceMember {
+  id: string;
+  space_id: string;
+  user_id: string;
+  display_name: string;
+  role: MemberRole;
+}
+
+export interface ExpenseParticipant {
+  user_id: string;
+  share_amount: number;
+}
+
+export interface SharedExpense {
+  id: string;
+  space_id: string;
+  payer_id: string;
+  amount: number;
+  description: string;
+  category: string;
+  occurred_on: string; // "YYYY-MM-DD"
+  created_at: string;
+  participants: ExpenseParticipant[];
+}
+
+export interface Settlement {
+  id: string;
+  space_id: string;
+  from_user: string;
+  to_user: string;
+  amount: number;
+  occurred_on: string;
+  note: string | null;
+}
+
+/**
+ * A net balance between the viewer and one counterparty, as returned by the
+ * `my_balances` RPC. `net > 0` → the counterparty will pay you; `net < 0` →
+ * you will pay them. Never zero (the RPC drops settled pairs).
+ */
+export interface Balance {
+  counterparty: string; // member user_id
+  net: number;
+}
+
+/** Full payload for the Space detail screen. */
+export interface SpaceDetail {
+  space: Space;
+  members: SpaceMember[];
+  expenses: SharedExpense[];
+  balances: Balance[];
+}

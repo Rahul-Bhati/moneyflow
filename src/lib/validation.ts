@@ -107,3 +107,80 @@ export const billUpdateSchema = z
   });
 
 export type BillUpdate = z.infer<typeof billUpdateSchema>;
+
+// ---------------------------------------------------------------------------
+// Spaces — shared expense splitting (M9)
+// ---------------------------------------------------------------------------
+export const spaceInputSchema = z
+  .object({
+    name: z
+      .string()
+      .trim()
+      .min(1, "Give the space a name")
+      .max(60, "Name must be 60 characters or fewer"),
+  })
+  .strict();
+export type SpaceInput = z.infer<typeof spaceInputSchema>;
+
+const amountField = z
+  .number({ message: "Amount must be a number" })
+  .finite("Amount must be a finite number")
+  .gt(0, "Enter an amount greater than zero")
+  .max(1_000_000_000, "Amount is too large");
+
+const participantSchema = z
+  .object({
+    user_id: z.string().trim().min(1, "Missing participant"),
+    share_amount: z
+      .number({ message: "Share must be a number" })
+      .finite()
+      .min(0, "Share can't be negative")
+      .max(1_000_000_000),
+  })
+  .strict();
+
+export const sharedExpenseInputSchema = z
+  .object({
+    amount: amountField,
+    description: z
+      .string()
+      .trim()
+      .min(1, "Add a description")
+      .max(140, "Description must be 140 characters or fewer"),
+    category: z.string().trim().min(1, "Pick a category").max(40),
+    occurred_on: isoDateSchema,
+    participants: z
+      .array(participantSchema)
+      .min(1, "Pick at least one person to split with")
+      .max(50, "Too many participants"),
+  })
+  .strict()
+  // The shares must add up to the total (allow sub-paisa rounding slack). This
+  // mirrors the DB-side guard in create_shared_expense so the user gets a clean
+  // message before the round trip.
+  .refine(
+    (v) =>
+      Math.abs(
+        v.participants.reduce((s, p) => s + p.share_amount, 0) - v.amount
+      ) <= 0.005,
+    { message: "Shares must add up to the total amount", path: ["participants"] }
+  );
+export type SharedExpenseInput = z.infer<typeof sharedExpenseInputSchema>;
+
+export const settlementInputSchema = z
+  .object({
+    // The other party. Direction says whether the caller paid them ("paid")
+    // or received from them ("received"); the service maps this to from/to.
+    counterparty: z.string().trim().min(1, "Pick a person"),
+    direction: z.enum(["paid", "received"]),
+    amount: amountField,
+    occurred_on: isoDateSchema,
+    note: z.string().trim().max(140).optional(),
+  })
+  .strict();
+export type SettlementInput = z.infer<typeof settlementInputSchema>;
+
+export const joinSchema = z
+  .object({ token: z.string().trim().min(1, "Missing invite token") })
+  .strict();
+export type JoinInput = z.infer<typeof joinSchema>;

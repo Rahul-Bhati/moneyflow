@@ -105,6 +105,7 @@ function AuthRouter() {
     <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: t.bg } }}>
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="(auth)" />
+      <Stack.Screen name="spaces/[id]" options={{ presentation: "card" }} />
     </Stack>
   );
 }

@@ -363,6 +363,47 @@ type BillsResponse = {
 
 ---
 
+## M9 — Spaces: privacy-scoped shared expense splitting ✅ done
+
+**Why:** Let users split real-world costs with roommates/friends — the way they
+already do in a WhatsApp group — but with a property no mainstream splitter
+(Splitwise) offers: **per-expense privacy**. When two people split something,
+no one else in the Space can see it. This is the wedge.
+
+**Scope (shipped):**
+- 6 tables (`spaces`, `space_members`, `space_invites`, `shared_expenses`,
+  `expense_participants`, `settlements`) with membership/visibility RLS via
+  `SECURITY DEFINER` helpers (`is_space_member`, `can_see_expense`) — see
+  `supabase/migrations/0005_spaces.sql`.
+- Atomic RPCs (`0006_spaces_rpcs.sql`): `create_space`, `create_shared_expense`
+  (mirrors the payer's own share into personal `transactions`), `my_balances`
+  (`security invoker`, leak-proof), `get_invite_by_token`, `accept_invite`,
+  `record_settlement`.
+- Service `src/lib/services/spaces.ts`, API routes `src/app/api/spaces/**`,
+  server actions `src/app/actions/spaces.ts`, Zod schemas, shared pure helpers
+  `src/lib/splits.ts` (equal-split with deterministic penny allocation).
+- Web: `/groups`, `/groups/[id]`, `/join/[token]` + Spaces nav link.
+- Mobile: a 5th "Spaces" tab + `app/spaces/[id]` detail + API client methods.
+- First unit tests in the repo (`src/lib/splits.test.ts`, vitest), wired into CI.
+
+**Privacy model:** an expense is visible only to its payer + participants; each
+member sees only their own pairwise balances; even the Space creator can't see
+expenses they aren't in. Terminology avoids "owe/borrow" — "you'll get / you'll
+pay / settle up".
+
+**Acceptance test:** Space {A, B, C}. A splits ₹45 chai 3 ways; B splits a ₹100
+dinner with A only (no C). C sees only the chai (owes A ₹15); the dinner is
+absent from C's feed and balances. A's net to B is "you'll pay ₹5", to C
+"you'll get ₹15". A's personal dashboard shows a ₹15 "Shared: chai" expense.
+
+**Schema / env:** Run `supabase/migrations/0005_spaces.sql` then
+`0006_spaces_rpcs.sql` (after 0000–0004). No new env.
+
+**Out of scope (v1):** name-only ghost members, non-payer share mirroring, debt
+simplification across 3+ people.
+
+---
+
 ## Verification — how to know the whole thing works
 
 After each milestone:

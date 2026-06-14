@@ -1,5 +1,5 @@
 import { Tabs } from "expo-router";
-import { BarChart3, Home, LayoutGrid, User } from "lucide-react-native";
+import { BarChart3, Home, LayoutGrid, User, Users } from "lucide-react-native";
 import { useTheme } from "@/lib/theme";
 
 export default function TabsLayout() {
@@ -38,6 +38,13 @@ export default function TabsLayout() {
         options={{
           title: "Bills",
           tabBarIcon: ({ color, size }) => <LayoutGrid color={color} size={size - 2} />,
+        }}
+      />
+      <Tabs.Screen
+        name="spaces"
+        options={{
+          title: "Spaces",
+          tabBarIcon: ({ color, size }) => <Users color={color} size={size - 2} />,
         }}
       />
       <Tabs.Screen

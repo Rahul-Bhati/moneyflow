@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { UserButton } from "@clerk/nextjs";
-import { BarChart3, LayoutGrid } from "lucide-react";
+import { BarChart3, LayoutGrid, Users } from "lucide-react";
 import { deleteTransaction } from "@/app/actions";
 import { type Transaction, type Period } from "@/lib/types";
 import { filterByPeriod, totals, chartBuckets, periodLabel } from "@/lib/format";
@@ -57,6 +57,13 @@ export default function Dashboard({
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Link
+            href="/groups"
+            aria-label="Open spaces"
+            className="flex size-9 items-center justify-center rounded-full text-muted transition hover:bg-surface-2 hover:text-ink active:scale-95"
+          >
+            <Users className="size-4" />
+          </Link>
           <Link
             href="/bills"
             aria-label="Open bills board"

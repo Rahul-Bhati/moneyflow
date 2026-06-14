@@ -35,6 +35,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Test (unit)
+        run: npm test
+
       - name: Build (production — also typechecks)
         env:
           # Placeholder env so Next's runtime guards don't crash the build.

@@ -128,3 +128,63 @@ export interface BillsResponse {
   };
   today: string;
 }
+
+// ---------------------------------------------------------------------------
+// Spaces — privacy-scoped shared expense splitting (M9). Mirror of web types.
+// ---------------------------------------------------------------------------
+export type MemberRole = "owner" | "member";
+
+export interface Space {
+  id: string;
+  name: string;
+  created_by: string;
+  created_at: string;
+  myNet?: number;
+}
+
+export interface SpaceMember {
+  id: string;
+  space_id: string;
+  user_id: string;
+  display_name: string;
+  role: MemberRole;
+}
+
+export interface ExpenseParticipant {
+  user_id: string;
+  share_amount: number;
+}
+
+export interface SharedExpense {
+  id: string;
+  space_id: string;
+  payer_id: string;
+  amount: number;
+  description: string;
+  category: string;
+  occurred_on: string;
+  created_at: string;
+  participants: ExpenseParticipant[];
+}
+
+export interface Settlement {
+  id: string;
+  space_id: string;
+  from_user: string;
+  to_user: string;
+  amount: number;
+  occurred_on: string;
+  note: string | null;
+}
+
+export interface Balance {
+  counterparty: string;
+  net: number;
+}
+
+export interface SpaceDetail {
+  space: Space;
+  members: SpaceMember[];
+  expenses: SharedExpense[];
+  balances: Balance[];
+}

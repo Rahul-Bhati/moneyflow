@@ -4,9 +4,15 @@ import type {
   Bill,
   BillsResponse,
   BillStatus,
+  ExpenseParticipant,
   ListTransactionsResponse,
   Period,
   Recurrence,
+  Settlement,
+  SharedExpense,
+  Space,
+  SpaceDetail,
+  SpaceMember,
   Transaction,
 } from "./types";
 
@@ -179,6 +185,67 @@ export const api = {
 
   deleteBill(getToken: GetToken, id: string): Promise<{ id: string }> {
     return request(getToken, `/api/bills/${id}`, { method: "DELETE" });
+  },
+
+  // --- Spaces (M9) ---------------------------------------------------------
+  listSpaces(getToken: GetToken): Promise<Space[]> {
+    return request(getToken, "/api/spaces");
+  },
+
+  getSpace(getToken: GetToken, id: string): Promise<SpaceDetail> {
+    return request(getToken, `/api/spaces/${id}`);
+  },
+
+  createSpace(getToken: GetToken, body: { name: string }): Promise<Space> {
+    return request(getToken, "/api/spaces", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+
+  createInvite(getToken: GetToken, spaceId: string): Promise<{ token: string }> {
+    return request(getToken, `/api/spaces/${spaceId}/invites`, { method: "POST" });
+  },
+
+  joinSpace(getToken: GetToken, token: string): Promise<SpaceMember> {
+    return request(getToken, "/api/spaces/join", {
+      method: "POST",
+      body: JSON.stringify({ token }),
+    });
+  },
+
+  addSharedExpense(
+    getToken: GetToken,
+    spaceId: string,
+    body: {
+      amount: number;
+      description: string;
+      category: string;
+      occurred_on: string;
+      participants: ExpenseParticipant[];
+    }
+  ): Promise<SharedExpense> {
+    return request(getToken, `/api/spaces/${spaceId}/expenses`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+
+  recordSettlement(
+    getToken: GetToken,
+    spaceId: string,
+    body: {
+      counterparty: string;
+      direction: "paid" | "received";
+      amount: number;
+      occurred_on: string;
+      note?: string;
+    }
+  ): Promise<Settlement> {
+    return request(getToken, `/api/spaces/${spaceId}/settlements`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
   },
 };
 
