@@ -1,10 +1,18 @@
 "use client";
 
+import { useMemo } from "react";
+import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
 import { ArrowDownLeft, ArrowUpRight, Wallet } from "lucide-react";
 import AnimatedNumber from "./AnimatedNumber";
-import { type Totals } from "@/lib/format";
-import { type Period } from "@/lib/types";
+import { dailyTotals, type Totals } from "@/lib/format";
+import { type Period, type Transaction } from "@/lib/types";
+
+// Sparkline pulls in Recharts — code-split so it doesn't bloat the dashboard.
+const Sparkline = dynamic(() => import("./analytics/Sparkline"), {
+  ssr: false,
+  loading: () => <div className="h-8" />,
+});
 
 const PERIOD_WORD: Record<Period, string> = {
   day: "today",
@@ -16,15 +24,22 @@ const PERIOD_WORD: Record<Period, string> = {
 export default function SummaryCards({
   totals,
   period,
+  transactions,
 }: {
   totals: Totals;
   period: Period;
+  transactions: Transaction[];
 }) {
   const positive = totals.net >= 0;
 
+  // 14-day sparkline data, derived from the full transaction list (not the
+  // period-filtered slice) so the trend stays continuous as the user toggles.
+  const last14 = useMemo(() => dailyTotals(transactions, 14), [transactions]);
+  const incomeSeries = useMemo(() => last14.map((d) => d.income), [last14]);
+  const expenseSeries = useMemo(() => last14.map((d) => d.expense), [last14]);
+
   return (
     <div className="flex flex-col gap-3">
-      {/* Hero — net balance for the period */}
       <motion.div
         layout
         initial={{ opacity: 0, y: 12 }}
@@ -56,19 +71,20 @@ export default function SummaryCards({
         </p>
       </motion.div>
 
-      {/* Earned / Spent */}
       <div className="grid grid-cols-2 gap-3">
         <StatCard
           label="Earned"
           value={totals.income}
           tone="income"
           icon={<ArrowDownLeft size={16} strokeWidth={2.4} />}
+          spark={<Sparkline values={incomeSeries} tone="income" />}
         />
         <StatCard
           label="Spent"
           value={totals.expense}
           tone="expense"
           icon={<ArrowUpRight size={16} strokeWidth={2.4} />}
+          spark={<Sparkline values={expenseSeries} tone="expense" />}
         />
       </div>
     </div>
@@ -80,11 +96,13 @@ function StatCard({
   value,
   tone,
   icon,
+  spark,
 }: {
   label: string;
   value: number;
   tone: "income" | "expense";
   icon: React.ReactNode;
+  spark: React.ReactNode;
 }) {
   return (
     <motion.div
@@ -109,6 +127,7 @@ function StatCard({
         value={value}
         className="tnum mt-3 block text-2xl font-bold"
       />
+      <div className="mt-1 h-8">{spark}</div>
     </motion.div>
   );
 }

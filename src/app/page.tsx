@@ -1,4 +1,4 @@
-import { getSupabase, isConfigured } from "@/lib/supabaseServer";
+import { getSupabaseForUser, isConfigured } from "@/lib/supabaseServer";
 import type { Transaction } from "@/lib/types";
 import Dashboard from "@/components/Dashboard";
 import SetupNotice from "@/components/SetupNotice";
@@ -7,14 +7,16 @@ import SetupNotice from "@/components/SetupNotice";
 export const dynamic = "force-dynamic";
 
 async function getTransactions(): Promise<Transaction[]> {
-  const supabase = getSupabase();
-  if (!supabase) return [];
-  const { data, error } = await supabase
+  const ctx = await getSupabaseForUser();
+  if (!ctx) return [];
+
+  const { data, error } = await ctx.supabase
     .from("transactions")
-    .select("id, amount, type, description, occurred_on, created_at")
+    .select("id, amount, type, description, category, occurred_on, created_at")
     .order("occurred_on", { ascending: false })
     .order("created_at", { ascending: false })
     .limit(2000);
+
   if (error) {
     console.error("Supabase fetch error:", error.message);
     return [];
@@ -23,6 +25,7 @@ async function getTransactions(): Promise<Transaction[]> {
     ...d,
     amount: Number(d.amount),
     description: d.description ?? "",
+    category: d.category ?? "Uncategorized",
   })) as Transaction[];
 }
 

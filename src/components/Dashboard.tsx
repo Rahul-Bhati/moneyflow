@@ -2,8 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
+import Link from "next/link";
+import { UserButton } from "@clerk/nextjs";
+import { BarChart3, LayoutGrid, Users } from "lucide-react";
 import { deleteTransaction } from "@/app/actions";
-import { signOut } from "@/app/auth/actions";
 import { type Transaction, type Period } from "@/lib/types";
 import { filterByPeriod, totals, chartBuckets, periodLabel } from "@/lib/format";
 import SegmentedFilter from "./SegmentedFilter";
@@ -12,7 +14,7 @@ import SpendChart from "./SpendChart";
 import TransactionList from "./TransactionList";
 import AddTransactionSheet from "./AddTransactionSheet";
 import ThemeToggle from "./ThemeToggle";
-import { LogOut } from "lucide-react";
+import Logo from "./Logo";
 
 export default function Dashboard({
   initialTransactions,
@@ -47,25 +49,47 @@ export default function Dashboard({
   }
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-4 pb-36">
-      <header className="glass sticky top-0 z-30 -mx-4 mb-1 flex items-center justify-between border-b border-border px-4 py-3.5">
-        <div>
-          <h1 className="font-display text-lg font-extrabold tracking-tight">MoneyFlow</h1>
-          <p className="text-xs font-medium text-muted" suppressHydrationWarning>
-            {mounted ? label : "\u00A0"}
-          </p>
+    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-4 pb-36 md:max-w-5xl md:px-8 lg:max-w-6xl">
+      <header className="glass sticky top-0 z-30 -mx-4 mb-1 flex items-center justify-between border-b border-border px-4 py-3.5 md:-mx-8 md:px-8">
+        <div className="flex items-center gap-2.5">
+          <Logo size={30} />
+          <div>
+            <h1 className="font-display text-lg font-extrabold tracking-tight">MoneyFlow</h1>
+            <p className="text-xs font-medium text-muted" suppressHydrationWarning>
+              {mounted ? label : "\u00A0"}
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
+          <Link
+            href="/groups"
+            aria-label="Open spaces"
+            className="flex size-9 items-center justify-center rounded-full text-muted transition hover:bg-surface-2 hover:text-ink active:scale-95"
+          >
+            <Users className="size-4" />
+          </Link>
+          <Link
+            href="/bills"
+            aria-label="Open bills board"
+            className="flex size-9 items-center justify-center rounded-full text-muted transition hover:bg-surface-2 hover:text-ink active:scale-95"
+          >
+            <LayoutGrid className="size-4" />
+          </Link>
+          <Link
+            href="/analytics"
+            aria-label="Open analytics"
+            className="flex size-9 items-center justify-center rounded-full text-muted transition hover:bg-surface-2 hover:text-ink active:scale-95"
+          >
+            <BarChart3 className="size-4" />
+          </Link>
           <ThemeToggle />
-          <form action={signOut}>
-            <button
-              type="submit"
-              title="Sign out"
-              className="flex size-9 items-center justify-center rounded-full text-muted transition hover:bg-surface-2 hover:text-ink active:scale-95"
-            >
-              <LogOut className="size-4" />
-            </button>
-          </form>
+          <UserButton
+            appearance={{
+              elements: {
+                avatarBox: "size-8",
+              },
+            }}
+          />
         </div>
       </header>
 
@@ -79,20 +103,25 @@ export default function Dashboard({
         </motion.div>
 
         {mounted ? (
-          <>
-            <SummaryCards totals={periodTotals} period={period} />
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {/* On mobile every card stacks; on md the chart sits beside the
+                summary; on lg the history grows a third column. */}
+            <div className="md:col-span-1 lg:col-span-1">
+              <SummaryCards totals={periodTotals} period={period} transactions={transactions} />
+            </div>
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.45, delay: 0.05 }}
+              className="md:col-span-1 lg:col-span-1"
             >
               <SpendChart buckets={buckets} period={period} />
             </motion.div>
-            <div className="mt-1">
+            <div className="md:col-span-2 lg:col-span-1">
               <h2 className="mb-2 px-1 font-display text-base font-bold">History</h2>
               <TransactionList transactions={filtered} onDelete={handleDelete} />
             </div>
-          </>
+          </div>
         ) : (
           <Skeleton />
         )}

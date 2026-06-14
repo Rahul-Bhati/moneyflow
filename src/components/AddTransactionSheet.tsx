@@ -6,7 +6,8 @@ import { Plus, X, ArrowDownLeft, ArrowUpRight, Check } from "lucide-react";
 import { format } from "date-fns";
 import { addTransaction } from "@/app/actions";
 import { currencySymbol } from "@/lib/format";
-import type { Transaction, TxType } from "@/lib/types";
+import { BUILT_IN_CATEGORIES, type Transaction, type TxType } from "@/lib/types";
+import { Chip } from "@/components/ui/Chip";
 
 export default function AddTransactionSheet({
   onAdded,
@@ -17,6 +18,8 @@ export default function AddTransactionSheet({
   const [type, setType] = useState<TxType>("expense");
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
+  const [category, setCategory] = useState<string>("Food");
+  const [customCategory, setCustomCategory] = useState("");
   const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,10 +37,19 @@ export default function AddTransactionSheet({
     }
   }, [open]);
 
+  // Sensible category default when toggling between income and expense.
+  useEffect(() => {
+    if (type === "income" && category !== "Income") setCategory("Income");
+    if (type === "expense" && category === "Income") setCategory("Food");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [type]);
+
   function reset() {
     setAmount("");
     setDescription("");
     setType("expense");
+    setCategory("Food");
+    setCustomCategory("");
     setDate(format(new Date(), "yyyy-MM-dd"));
     setError(null);
   }
@@ -49,12 +61,17 @@ export default function AddTransactionSheet({
       amountRef.current?.focus();
       return;
     }
+    const finalCategory =
+      category === "__custom__"
+        ? customCategory.trim() || "Other"
+        : category;
     setPending(true);
     setError(null);
     const res = await addTransaction({
       amount: value,
       type,
       description,
+      category: finalCategory,
       occurred_on: date,
     });
     setPending(false);
@@ -193,6 +210,44 @@ export default function AddTransactionSheet({
                 placeholder={income ? "What was it for? (e.g. Salary)" : "What did you spend on?"}
                 className="mb-3 w-full rounded-2xl border border-border bg-surface px-4 py-3.5 text-[0.95rem] text-ink outline-none transition focus:border-border-strong focus:ring-4 focus:ring-[var(--ring)]"
               />
+
+              {/* category chips */}
+              <div className="mb-3">
+                <div className="mb-1.5 px-1 text-xs font-medium uppercase tracking-wide text-muted">
+                  Category
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {BUILT_IN_CATEGORIES.map((c) => (
+                    <Chip
+                      key={c}
+                      active={category === c}
+                      onClick={() => setCategory(c)}
+                    >
+                      {c}
+                    </Chip>
+                  ))}
+                  <Chip
+                    active={category === "__custom__"}
+                    onClick={() => setCategory("__custom__")}
+                  >
+                    Custom…
+                  </Chip>
+                </div>
+                <AnimatePresence>
+                  {category === "__custom__" && (
+                    <motion.input
+                      initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                      animate={{ opacity: 1, height: "auto", marginTop: 8 }}
+                      exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                      value={customCategory}
+                      onChange={(e) => setCustomCategory(e.target.value)}
+                      maxLength={40}
+                      placeholder="Type a category"
+                      className="w-full rounded-2xl border border-border bg-surface px-4 py-2.5 text-[0.9rem] text-ink outline-none transition focus:border-border-strong focus:ring-4 focus:ring-[var(--ring)]"
+                    />
+                  )}
+                </AnimatePresence>
+              </div>
 
               {/* date */}
               <label className="mb-2 flex items-center justify-between rounded-2xl border border-border bg-surface px-4 py-3 text-sm">

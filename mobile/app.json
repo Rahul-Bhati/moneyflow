@@ -1,0 +1,42 @@
+{
+  "expo": {
+    "name": "MoneyFlow",
+    "slug": "moneyflow",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "moneyflow",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.moneyflow.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#f3f0e9"
+      },
+      "package": "com.moneyflow.app"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#f3f0e9"
+        }
+      ],
+      "expo-asset",
+      "expo-font",
+      "expo-status-bar",
+      "expo-web-browser",
+      "expo-image"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+
+# Cancel in-progress runs when a new commit lands on the same ref — saves
+# minutes on noisy PRs.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ──────────────────────────────────────────────────────────────────────
+  # Web app — lint + production build (which also typechecks).
+  # ──────────────────────────────────────────────────────────────────────
+  web:
+    name: Web (lint + build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test (unit)
+        run: npm test
+
+      - name: Build (production — also typechecks)
+        env:
+          # Placeholder env so Next's runtime guards don't crash the build.
+          # Real secrets come from Vercel env on deploy.
+          SUPABASE_URL: https://ci.placeholder.supabase.co
+          SUPABASE_ANON_KEY: ci-placeholder-anon
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_ci-placeholder
+          CLERK_SECRET_KEY: sk_test_ci-placeholder
+        run: npm run build
+
+  # ──────────────────────────────────────────────────────────────────────
+  # Mobile app — typecheck + expo-doctor (no native build; just verifies
+  # the JS surface compiles and deps are aligned to the SDK).
+  # ──────────────────────────────────────────────────────────────────────
+  mobile:
+    name: Mobile (typecheck + doctor)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: TypeScript
+        run: npx tsc --noEmit
+
+      - name: Expo doctor
+        # Warn-only: doctor sometimes flags new SDK minors that haven't shipped
+        # type updates yet. Don't block the PR — surface in logs.
+        run: npx expo-doctor || true
