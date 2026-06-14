@@ -14,6 +14,7 @@ import SpendChart from "./SpendChart";
 import TransactionList from "./TransactionList";
 import AddTransactionSheet from "./AddTransactionSheet";
 import ThemeToggle from "./ThemeToggle";
+import Logo from "./Logo";
 
 export default function Dashboard({
   initialTransactions,
@@ -50,11 +51,14 @@ export default function Dashboard({
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-4 pb-36 md:max-w-5xl md:px-8 lg:max-w-6xl">
       <header className="glass sticky top-0 z-30 -mx-4 mb-1 flex items-center justify-between border-b border-border px-4 py-3.5 md:-mx-8 md:px-8">
-        <div>
-          <h1 className="font-display text-lg font-extrabold tracking-tight">MoneyFlow</h1>
-          <p className="text-xs font-medium text-muted" suppressHydrationWarning>
-            {mounted ? label : "\u00A0"}
-          </p>
+        <div className="flex items-center gap-2.5">
+          <Logo size={30} />
+          <div>
+            <h1 className="font-display text-lg font-extrabold tracking-tight">MoneyFlow</h1>
+            <p className="text-xs font-medium text-muted" suppressHydrationWarning>
+              {mounted ? label : "\u00A0"}
+            </p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Link
