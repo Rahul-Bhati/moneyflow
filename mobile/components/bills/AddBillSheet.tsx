@@ -17,6 +17,7 @@ import { currencySymbol } from "@/lib/format";
 import { todayISO } from "@/lib/recurrence";
 import { RECURRENCES, type Bill, type Recurrence } from "@/lib/types";
 import { useTheme } from "@/lib/theme";
+import { DatePickerField } from "@/components/ui/DatePickerField";
 
 export function AddBillSheet({ onAdded }: { onAdded: (b: Bill) => void }) {
   const { t } = useTheme();
@@ -168,27 +169,12 @@ export function AddBillSheet({ onAdded }: { onAdded: (b: Bill) => void }) {
               />
             </View>
 
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "center",
-                height: 50,
-                paddingHorizontal: 14,
-                borderRadius: 14, borderCurve: "continuous",
-                backgroundColor: t.surface,
-                borderColor: t.border,
-                borderWidth: 1,
-                marginBottom: 12,
-              }}
-            >
-              <Text style={{ color: t.muted, fontSize: 13, fontWeight: "500" }}>Due date</Text>
-              <TextInput
+            <View style={{ marginBottom: 12 }}>
+              <DatePickerField
                 value={dueOn}
-                onChangeText={setDueOn}
-                style={{ color: t.ink, fontSize: 14, fontWeight: "500", textAlign: "right", flex: 1, marginLeft: 12 }}
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor={t.muted}
+                onChange={setDueOn}
+                label="Due date"
+                minDate={new Date()}
               />
             </View>
 

@@ -144,6 +144,23 @@ export const api = {
     });
   },
 
+  updateTransaction(
+    getToken: GetToken,
+    id: string,
+    patch: Partial<{
+      amount: number;
+      type: "income" | "expense";
+      description: string;
+      category: string;
+      occurred_on: string;
+    }>
+  ): Promise<Transaction> {
+    return request(getToken, `/api/transactions/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    });
+  },
+
   deleteTransaction(getToken: GetToken, id: string): Promise<{ id: string }> {
     return request(getToken, `/api/transactions/${id}`, { method: "DELETE" });
   },
