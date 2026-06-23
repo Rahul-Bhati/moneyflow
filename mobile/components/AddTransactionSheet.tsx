@@ -17,6 +17,7 @@ import { currencySymbol } from "@/lib/format";
 import { todayISO } from "@/lib/recurrence";
 import { BUILT_IN_CATEGORIES, type Transaction, type TxType } from "@/lib/types";
 import { useTheme } from "@/lib/theme";
+import { DatePickerField } from "@/components/ui/DatePickerField";
 
 /**
  * Bottom-sheet equivalent for RN. We use React Native's built-in `Modal`
@@ -32,7 +33,7 @@ export function AddTransactionSheet({ onAdded }: { onAdded: (t: Transaction) => 
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState<string>("Food");
   const [customCategory, setCustomCategory] = useState("");
-  const [date] = useState(todayISO()); // editable date is a polish for later
+  const [date, setDate] = useState(todayISO());
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,6 +48,7 @@ export function AddTransactionSheet({ onAdded }: { onAdded: (t: Transaction) => 
     setType("expense");
     setCategory("Food");
     setCustomCategory("");
+    setDate(todayISO());
     setError(null);
   }
 
@@ -218,6 +220,10 @@ export function AddTransactionSheet({ onAdded }: { onAdded: (t: Transaction) => 
                 marginBottom: 12,
               }}
             />
+
+            <View style={{ marginBottom: 12 }}>
+              <DatePickerField value={date} onChange={setDate} label="Date" />
+            </View>
 
             {/* category chips */}
             <Text style={{ fontSize: 11, color: t.muted, fontWeight: "600", letterSpacing: 0.6, textTransform: "uppercase", marginBottom: 6 }}>

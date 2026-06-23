@@ -15,6 +15,7 @@ import { api, ApiError } from "@/lib/api";
 import { money, periodLabel } from "@/lib/format";
 import { useStableToken } from "@/lib/useStableToken";
 import { useTheme } from "@/lib/theme";
+import { Pencil } from "lucide-react-native";
 import type {
   DailyTotal,
   ListTransactionsResponse,
@@ -22,6 +23,7 @@ import type {
   Transaction,
 } from "@/lib/types";
 import { AddTransactionSheet } from "@/components/AddTransactionSheet";
+import { EditTransactionSheet } from "@/components/EditTransactionSheet";
 import { SegmentedFilter } from "@/components/ui/SegmentedFilter";
 import { SpendChart } from "@/components/SpendChart";
 import { SummaryCards } from "@/components/SummaryCards";
@@ -48,6 +50,8 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [visibleCount, setVisibleCount] = useState(20);
+  const [editingTx, setEditingTx] = useState<Transaction | null>(null);
 
   const load = useCallback(
     async (p: Period) => {
@@ -75,17 +79,34 @@ export default function HomeScreen() {
 
   useEffect(() => {
     setLoading(true);
+    setVisibleCount(20);
     load(period);
   }, [period, load]);
 
   const onAdded = useCallback(
     (tx: Transaction) => {
-      // Optimistic: prepend then re-pull (cheap).
       setData((prev) =>
         prev
           ? {
               transactions: [tx, ...prev.transactions],
-              totals: prev.totals, // server will reconcile on next load
+              totals: prev.totals,
+            }
+          : prev
+      );
+      load(period);
+    },
+    [load, period]
+  );
+
+  const onEdited = useCallback(
+    (updated: Transaction) => {
+      setData((prev) =>
+        prev
+          ? {
+              ...prev,
+              transactions: prev.transactions.map((x) =>
+                x.id === updated.id ? updated : x
+              ),
             }
           : prev
       );
@@ -121,24 +142,25 @@ export default function HomeScreen() {
     [data, getToken, load, period]
   );
 
-  // Slice once per render rather than inside the JSX so identity is stable
-  // (FlashList diffs the `data` array reference).
   const visibleTx = useMemo(
-    () => data?.transactions.slice(0, 20) ?? [],
-    [data?.transactions]
+    () => data?.transactions.slice(0, visibleCount) ?? [],
+    [data?.transactions, visibleCount]
   );
+  const hasMore = (data?.transactions.length ?? 0) > visibleCount;
 
   // Stable `keyExtractor` for FlashList — defined outside the JSX so it's
   // not allocated on every render.
   const keyExtractor = useCallback((tx: Transaction) => tx.id, []);
 
-  // Stable `renderItem` — uses the captured `onDelete` which is itself a
-  // useCallback, so identity flips only when transactions or token change.
+  const onEdit = useCallback((tx: Transaction) => {
+    setEditingTx(tx);
+  }, []);
+
   const renderItem = useCallback(
     ({ item }: { item: Transaction }) => (
-      <Row tx={item} onDelete={onDelete} />
+      <Row tx={item} onDelete={onDelete} onEdit={onEdit} />
     ),
-    [onDelete]
+    [onDelete, onEdit]
   );
 
   return (
@@ -195,6 +217,11 @@ export default function HomeScreen() {
             />
           }
           ListEmptyComponent={<EmptyHistory />}
+          ListFooterComponent={
+            hasMore ? (
+              <LoadMore onPress={() => setVisibleCount((c) => c + 30)} />
+            ) : null
+          }
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -209,6 +236,11 @@ export default function HomeScreen() {
       )}
 
       <AddTransactionSheet onAdded={onAdded} />
+      <EditTransactionSheet
+        tx={editingTx}
+        onClose={() => setEditingTx(null)}
+        onSaved={onEdited}
+      />
     </SafeAreaView>
   );
 }
@@ -265,6 +297,30 @@ function ListHeader({
   );
 }
 
+function LoadMore({ onPress }: { onPress: () => void }) {
+  const { t } = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({
+        marginTop: 8,
+        paddingVertical: 14,
+        alignItems: "center",
+        borderRadius: t.radiusLg,
+        borderCurve: "continuous",
+        backgroundColor: t.surface,
+        borderColor: t.border,
+        borderWidth: 1,
+        opacity: pressed ? 0.7 : 1,
+      })}
+    >
+      <Text style={{ color: t.muted, fontWeight: "600", fontSize: 13 }}>
+        Load more
+      </Text>
+    </Pressable>
+  );
+}
+
 function EmptyHistory() {
   const { t } = useTheme();
   return (
@@ -285,16 +341,24 @@ function EmptyHistory() {
   );
 }
 
-// memo: when the parent re-renders for any reason (period change, new
-// transaction added at the top), unchanged rows stay mounted and skip render.
 const Row = memo(_Row);
 
-function _Row({ tx, onDelete }: { tx: Transaction; onDelete: (id: string) => void }) {
+function _Row({
+  tx,
+  onDelete,
+  onEdit,
+}: {
+  tx: Transaction;
+  onDelete: (id: string) => void;
+  onEdit: (tx: Transaction) => void;
+}) {
   const { t } = useTheme();
   const income = tx.type === "income";
   return (
-    <View
-      style={{
+    <Pressable
+      onLongPress={() => onEdit(tx)}
+      delayLongPress={300}
+      style={({ pressed }) => ({
         flexDirection: "row",
         alignItems: "center",
         backgroundColor: t.surface,
@@ -303,7 +367,8 @@ function _Row({ tx, onDelete }: { tx: Transaction; onDelete: (id: string) => voi
         borderRadius: t.radiusLg,
         borderCurve: "continuous",
         padding: 12,
-      }}
+        opacity: pressed ? 0.85 : 1,
+      })}
     >
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text style={{ color: t.ink, fontWeight: "600", fontSize: 14 }} numberOfLines={1}>
@@ -326,24 +391,35 @@ function _Row({ tx, onDelete }: { tx: Transaction; onDelete: (id: string) => voi
         {money(tx.amount)}
       </Text>
       <Pressable
-        // Dispatcher pattern (react-state-dispatcher rule): pass tx.id back
-        // to the parent's stable onDelete instead of capturing a per-row
-        // closure. Lets the parent's useCallback identity stay stable, which
-        // is what makes `Row` memo-friendly.
-        onPress={() => onDelete(tx.id)}
+        onPress={() => onEdit(tx)}
         hitSlop={8}
         style={({ pressed }) => ({
-          marginLeft: 10,
+          marginLeft: 8,
           width: 30,
           height: 30,
           borderRadius: 15,
           alignItems: "center",
           justifyContent: "center",
-          opacity: pressed ? 0.6 : 0.4,
+          opacity: pressed ? 0.6 : 0.35,
         })}
       >
-        <Trash2 color={t.muted} size={15} />
+        <Pencil color={t.muted} size={14} />
       </Pressable>
-    </View>
+      <Pressable
+        onPress={() => onDelete(tx.id)}
+        hitSlop={8}
+        style={({ pressed }) => ({
+          marginLeft: 4,
+          width: 30,
+          height: 30,
+          borderRadius: 15,
+          alignItems: "center",
+          justifyContent: "center",
+          opacity: pressed ? 0.6 : 0.35,
+        })}
+      >
+        <Trash2 color={t.muted} size={14} />
+      </Pressable>
+    </Pressable>
   );
 }

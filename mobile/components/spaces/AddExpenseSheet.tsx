@@ -13,10 +13,12 @@ import {
 import { X } from "lucide-react-native";
 import { api, ApiError } from "@/lib/api";
 import { currencySymbol, money } from "@/lib/format";
+import { todayISO } from "@/lib/recurrence";
 import { equalSplit } from "@/lib/splits";
 import { useStableToken } from "@/lib/useStableToken";
 import { useTheme } from "@/lib/theme";
 import { BUILT_IN_CATEGORIES, type SpaceMember } from "@/lib/types";
+import { DatePickerField } from "@/components/ui/DatePickerField";
 
 type SplitMode = "equal" | "custom";
 
@@ -40,6 +42,7 @@ export function AddExpenseSheet({
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("Food");
+  const [occurredOn, setOccurredOn] = useState(todayISO());
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [mode, setMode] = useState<SplitMode>("equal");
   const [custom, setCustom] = useState<Record<string, string>>({});
@@ -71,6 +74,7 @@ export function AddExpenseSheet({
     setAmount("");
     setDescription("");
     setCategory("Food");
+    setOccurredOn(todayISO());
     setMode("equal");
     setCustom({});
     setError(null);
@@ -123,7 +127,7 @@ export function AddExpenseSheet({
         amount: value,
         description: description.trim(),
         category,
-        occurred_on: new Date().toISOString().slice(0, 10),
+        occurred_on: occurredOn,
         participants,
       });
       reset();
@@ -197,12 +201,16 @@ export function AddExpenseSheet({
               />
 
               {/* category */}
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
                 {BUILT_IN_CATEGORIES.map((c) => (
                   <Pressable key={c} onPress={() => setCategory(c)} style={pill(category === c)}>
                     <Text style={{ color: category === c ? t.accentInk : t.muted, fontWeight: "700", fontSize: 12 }}>{c}</Text>
                   </Pressable>
                 ))}
+              </View>
+
+              <View style={{ marginBottom: 14 }}>
+                <DatePickerField value={occurredOn} onChange={setOccurredOn} label="Date" />
               </View>
 
               {/* participants */}

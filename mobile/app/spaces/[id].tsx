@@ -13,8 +13,10 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ArrowLeft, Plus, UserPlus } from "lucide-react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api, ApiError, apiBaseUrl } from "@/lib/api";
 import { money } from "@/lib/format";
+import { todayISO } from "@/lib/recurrence";
 import { summarizeBalances } from "@/lib/splits";
 import { useStableToken } from "@/lib/useStableToken";
 import { useTheme } from "@/lib/theme";
@@ -29,6 +31,7 @@ export default function SpaceDetailScreen() {
   const getToken = useStableToken();
   const router = useRouter();
 
+  const insets = useSafeAreaInsets();
   const [detail, setDetail] = useState<SpaceDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -88,7 +91,7 @@ export default function SpaceDetailScreen() {
                 counterparty: b.counterparty,
                 direction: paying ? "paid" : "received",
                 amount: Math.abs(b.net),
-                occurred_on: new Date().toISOString().slice(0, 10),
+                occurred_on: todayISO(),
               });
               load();
             } catch (e) {
@@ -274,7 +277,7 @@ export default function SpaceDetailScreen() {
           onPress={() => setAdding(true)}
           style={{
             position: "absolute",
-            bottom: 28,
+            bottom: Math.max(insets.bottom + 16, 28),
             alignSelf: "center",
             flexDirection: "row",
             alignItems: "center",
@@ -284,6 +287,11 @@ export default function SpaceDetailScreen() {
             paddingRight: 24,
             borderRadius: 999,
             backgroundColor: t.accent,
+            shadowColor: "#000",
+            shadowOpacity: 0.2,
+            shadowOffset: { width: 0, height: 4 },
+            shadowRadius: 12,
+            elevation: 6,
           }}
         >
           <Plus color={t.accentInk} size={20} strokeWidth={2.6} />

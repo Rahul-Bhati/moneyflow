@@ -36,6 +36,7 @@ export default function SpacesScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [joining, setJoining] = useState(false);
 
   const load = useCallback(async () => {
     if (!isSignedIn) return;
@@ -165,25 +166,52 @@ export default function SpacesScreen() {
         )}
       </ScrollView>
 
-      <Pressable
-        onPress={() => setAdding(true)}
+      {/* FAB row */}
+      <View
         style={{
           position: "absolute",
           bottom: 28,
           alignSelf: "center",
           flexDirection: "row",
-          alignItems: "center",
-          gap: 8,
-          height: 54,
-          paddingLeft: 20,
-          paddingRight: 24,
-          borderRadius: 999,
-          backgroundColor: t.accent,
+          gap: 10,
         }}
       >
-        <Plus color={t.accentInk} size={20} strokeWidth={2.6} />
-        <Text style={{ color: t.accentInk, fontWeight: "700", fontSize: 15 }}>New space</Text>
-      </Pressable>
+        <Pressable
+          onPress={() => setJoining(true)}
+          style={({ pressed }) => ({
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 8,
+            height: 54,
+            paddingLeft: 20,
+            paddingRight: 24,
+            borderRadius: 999,
+            backgroundColor: t.surface,
+            borderColor: t.border,
+            borderWidth: 1,
+            opacity: pressed ? 0.85 : 1,
+          })}
+        >
+          <Text style={{ color: t.ink, fontWeight: "700", fontSize: 15 }}>Join</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => setAdding(true)}
+          style={({ pressed }) => ({
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 8,
+            height: 54,
+            paddingLeft: 20,
+            paddingRight: 24,
+            borderRadius: 999,
+            backgroundColor: t.accent,
+            opacity: pressed ? 0.85 : 1,
+          })}
+        >
+          <Plus color={t.accentInk} size={20} strokeWidth={2.6} />
+          <Text style={{ color: t.accentInk, fontWeight: "700", fontSize: 15 }}>New space</Text>
+        </Pressable>
+      </View>
 
       <NewSpaceModal
         open={adding}
@@ -191,6 +219,15 @@ export default function SpacesScreen() {
         onCreated={(s) => {
           setSpaces((prev) => [{ ...s, myNet: 0 }, ...prev]);
           setAdding(false);
+        }}
+      />
+      <JoinSpaceModal
+        open={joining}
+        onClose={() => setJoining(false)}
+        onJoined={(spaceId) => {
+          setJoining(false);
+          load();
+          router.push(`/spaces/${spaceId}` as never);
         }}
       />
     </SafeAreaView>
@@ -290,6 +327,114 @@ function NewSpaceModal({
             ) : (
               <Text style={{ color: t.accentInk, fontWeight: "800", fontSize: 15 }}>
                 Create space
+              </Text>
+            )}
+          </Pressable>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+function JoinSpaceModal({
+  open,
+  onClose,
+  onJoined,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onJoined: (spaceId: string) => void;
+}) {
+  const { t } = useTheme();
+  const getToken = useStableToken();
+  const [token, setToken] = useState("");
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit() {
+    const tok = token.trim();
+    if (!tok) {
+      setError("Paste the invite code from your friend.");
+      return;
+    }
+    setPending(true);
+    setError(null);
+    try {
+      const member = await api.joinSpace(getToken, tok);
+      setToken("");
+      onJoined(member.space_id);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Invalid or expired code.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <Modal visible={open} animationType="slide" transparent onRequestClose={onClose}>
+      <Pressable
+        onPress={onClose}
+        style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" }}
+      >
+        <Pressable
+          onPress={(e) => e.stopPropagation()}
+          style={{
+            backgroundColor: t.surface,
+            borderTopLeftRadius: 28,
+            borderTopRightRadius: 28,
+            padding: 20,
+            paddingBottom: 36,
+            gap: 14,
+          }}
+        >
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+            <Text style={{ color: t.ink, fontWeight: "800", fontSize: 18 }}>Join a space</Text>
+            <Pressable onPress={onClose}>
+              <X color={t.muted} size={20} />
+            </Pressable>
+          </View>
+          <Text style={{ color: t.muted, fontSize: 13 }}>
+            Paste the invite code your friend shared with you.
+          </Text>
+          <TextInput
+            autoFocus
+            value={token}
+            onChangeText={setToken}
+            placeholder="Invite code"
+            placeholderTextColor={t.muted}
+            autoCapitalize="none"
+            autoCorrect={false}
+            style={{
+              borderWidth: 1,
+              borderColor: t.border,
+              borderRadius: t.radiusLg,
+              borderCurve: "continuous",
+              paddingHorizontal: 14,
+              paddingVertical: 12,
+              color: t.ink,
+              fontSize: 15,
+              fontFamily: t.font.mono,
+            }}
+          />
+          {error && <Text style={{ color: t.expense, fontWeight: "600" }}>{error}</Text>}
+          <Pressable
+            onPress={submit}
+            disabled={pending}
+            style={{
+              height: 52,
+              borderRadius: t.radiusLg,
+              borderCurve: "continuous",
+              backgroundColor: t.accent,
+              alignItems: "center",
+              justifyContent: "center",
+              opacity: pending ? 0.6 : 1,
+            }}
+          >
+            {pending ? (
+              <ActivityIndicator color={t.accentInk} />
+            ) : (
+              <Text style={{ color: t.accentInk, fontWeight: "800", fontSize: 15 }}>
+                Join space
               </Text>
             )}
           </Pressable>
