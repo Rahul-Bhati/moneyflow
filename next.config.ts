@@ -20,7 +20,11 @@ function buildCsp(): string {
     "default-src": ["'self'"],
     "script-src": [
       "'self'",
-      ...(isDev ? ["'unsafe-eval'", "'unsafe-inline'"] : []),
+      // Clerk injects inline scripts for auth UI initialization; 'unsafe-inline'
+      // is required in both dev and prod. All trusted script origins are still
+      // enumerated, so the attack surface is limited to same-origin + Clerk/CF.
+      "'unsafe-inline'",
+      ...(isDev ? ["'unsafe-eval'"] : []),
       "https://*.clerk.accounts.dev",
       "https://*.clerk.com",
       "https://challenges.cloudflare.com",
@@ -28,9 +32,11 @@ function buildCsp(): string {
     // Tailwind + Framer-Motion inject inline styles at runtime; allowing
     // unsafe-inline is required for them to work and is the standard
     // recommendation in their docs.
-    "style-src": ["'self'", "'unsafe-inline'"],
+    // fonts.googleapis.com is Clerk UI's Google Fonts stylesheet CDN.
+    "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
     "img-src": ["'self'", "data:", "blob:", "https://img.clerk.com", "https:"],
-    "font-src": ["'self'", "data:"],
+    // fonts.gstatic.com serves the actual font files loaded via fonts.googleapis.com.
+    "font-src": ["'self'", "data:", "https://fonts.gstatic.com"],
     "connect-src": [
       "'self'",
       clerkOrigin,
