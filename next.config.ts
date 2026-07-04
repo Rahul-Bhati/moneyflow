@@ -13,7 +13,7 @@ import path from "node:path";
  */
 function buildCsp(): string {
   const isDev = process.env.NODE_ENV !== "production";
-  const clerkOrigin = "*.clerk.accounts.dev https://*.clerk.com https://clerk.com";
+  const clerkOrigin = "https://*.clerk.accounts.dev https://*.clerk.com https://clerk.com";
   const supabaseOrigin = "https://*.supabase.co wss://*.supabase.co";
 
   const directives: Record<string, string[]> = {
@@ -41,8 +41,14 @@ function buildCsp(): string {
       "'self'",
       clerkOrigin,
       supabaseOrigin,
+      // Clerk telemetry (fires on sign-in page load)
+      "https://clerk-telemetry.com",
       // Upstash REST endpoint
       "https://*.upstash.io",
+      // Google Fonts — needed for <link rel="preconnect"> hints in layout.tsx;
+      // Chrome enforces connect-src for preconnect, not just style-src.
+      "https://fonts.googleapis.com",
+      "https://fonts.gstatic.com",
     ],
     "frame-src": ["'self'", "https://challenges.cloudflare.com"],
     "worker-src": ["'self'", "blob:"],
