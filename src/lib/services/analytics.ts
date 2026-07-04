@@ -37,12 +37,24 @@ export interface AnalyticsPayload {
 export async function getAnalytics(
   period: Period = "month"
 ): Promise<ServiceResult<AnalyticsPayload>> {
-  const ctx = await getSupabaseForUser();
+  let ctx;
+  try {
+    ctx = await getSupabaseForUser();
+  } catch (e) {
+    return fail(500, e instanceof Error ? e.message : "Auth error");
+  }
   if (!ctx) return fail(401, "Not signed in.");
+
+  // 2-year lookback covers all analytics views (month, year, 6-month trend).
+  // The (user_id, occurred_on DESC) index makes this filter free.
+  const twoYearsAgo = new Date();
+  twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
+  const cutoff = twoYearsAgo.toISOString().slice(0, 10);
 
   const { data, error } = await ctx.supabase
     .from("transactions")
     .select(COLUMNS)
+    .gte("occurred_on", cutoff)
     .order("occurred_on", { ascending: false })
     .order("created_at", { ascending: false })
     .limit(5000);

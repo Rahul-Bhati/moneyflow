@@ -95,16 +95,19 @@ export async function listSpaces(): Promise<ServiceResult<Space[]>> {
     .order("created_at", { ascending: false });
   if (error) return fail(500, error.message);
 
-  const spaces: Space[] = [];
-  for (const row of data ?? []) {
-    const { data: bals } = await ctx.supabase.rpc("my_balances", {
-      p_space_id: row.id,
-    });
-    const myNet = round2(
-      shapeBalances(bals).reduce((s, b) => s + b.net, 0)
-    );
-    spaces.push({ ...shapeSpace(row), myNet });
-  }
+  // Fire all balance RPCs in parallel rather than serially — O(1) wall-clock
+  // regardless of how many spaces the user belongs to.
+  const spaces = await Promise.all(
+    (data ?? []).map(async (row) => {
+      const { data: bals } = await ctx.supabase.rpc("my_balances", {
+        p_space_id: row.id,
+      });
+      const myNet = round2(
+        shapeBalances(bals).reduce((s, b) => s + b.net, 0)
+      );
+      return { ...shapeSpace(row), myNet };
+    })
+  );
   return ok(spaces);
 }
 

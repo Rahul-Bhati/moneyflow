@@ -46,7 +46,12 @@ export interface ListResult {
 export async function listTransactions(
   opts: ListOptions = {}
 ): Promise<ServiceResult<ListResult>> {
-  const ctx = await getSupabaseForUser();
+  let ctx;
+  try {
+    ctx = await getSupabaseForUser();
+  } catch (e) {
+    return fail(500, e instanceof Error ? e.message : "Auth error");
+  }
   if (!ctx) return fail(401, "Not signed in.");
 
   let query = ctx.supabase
@@ -73,7 +78,12 @@ export async function createTransaction(
   const parsed = transactionInputSchema.safeParse(input);
   if (!parsed.success) return fail(400, firstError(parsed.error));
 
-  const ctx = await getSupabaseForUser();
+  let ctx;
+  try {
+    ctx = await getSupabaseForUser();
+  } catch (e) {
+    return fail(500, e instanceof Error ? e.message : "Auth error");
+  }
   if (!ctx) return fail(401, "Not signed in.");
 
   const { amount, type, description, category, occurred_on } = parsed.data;
@@ -105,7 +115,12 @@ export async function updateTransaction(
   const patchCheck = transactionUpdateSchema.safeParse(patch);
   if (!patchCheck.success) return fail(400, firstError(patchCheck.error));
 
-  const ctx = await getSupabaseForUser();
+  let ctx;
+  try {
+    ctx = await getSupabaseForUser();
+  } catch (e) {
+    return fail(500, e instanceof Error ? e.message : "Auth error");
+  }
   if (!ctx) return fail(401, "Not signed in.");
 
   // Build the update payload only from fields the caller actually sent.
@@ -136,7 +151,12 @@ export async function deleteTransactionById(
   const idCheck = idSchema.safeParse(rawId);
   if (!idCheck.success) return fail(400, firstError(idCheck.error));
 
-  const ctx = await getSupabaseForUser();
+  let ctx;
+  try {
+    ctx = await getSupabaseForUser();
+  } catch (e) {
+    return fail(500, e instanceof Error ? e.message : "Auth error");
+  }
   if (!ctx) return fail(401, "Not signed in.");
 
   const { error, count } = await ctx.supabase
